@@ -1,7 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain, nativeImage, nativeTheme, session, shell } from 'electron';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createAbliServer } from '../server.mjs';
 import { executeComputerTool } from '../lib/computer-control.mjs';
 import { executeReaTool } from '../mcp/rea-server.mjs';
 
@@ -24,21 +24,87 @@ if (process.platform === 'win32') {
 }
 
 let mainWindow = null;
-let localPort = Number(process.env.PORT || 4747);
+const localPort = Number(process.env.PORT || 4747);
 let serverInstance = null;
 
+// Hosted mode: when a backend URL is set, this app is only a client. It never runs a server and
+// holds no provider keys. Set it in desktop/backend.json (shipped in the installer) or ABLI_BACKEND_URL.
+function readBackendUrl() {
+  let url = String(process.env.ABLI_BACKEND_URL || '').trim();
+  if (!url) {
+    try {
+      url = String(JSON.parse(fs.readFileSync(path.join(__dirname, 'backend.json'), 'utf8')).backendUrl || '').trim();
+    } catch {}
+  }
+  url = url.replace(/\/+$/, '');
+  const ok = /^https:\/\//i.test(url) || /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/i.test(url);
+  return ok ? url : '';
+}
+
+const BACKEND_URL = readBackendUrl();
+const APP_ORIGIN = BACKEND_URL ? new URL(BACKEND_URL).origin : `http://127.0.0.1:${localPort}`;
+
 async function startEmbeddedServer() {
+  // Local mode keeps its data in the user's profile folder, not inside the read-only app package.
+  process.env.ABLI_DATA_DIR = process.env.ABLI_DATA_DIR || path.join(app.getPath('userData'), 'data');
+  const { createAbliServer } = await import('../server.mjs');
   const srv = createAbliServer();
   return new Promise((resolve) => {
-    srv.on('error', () => {
-      resolve(null);
-    });
+    srv.on('error', () => resolve(null));
     srv.listen(localPort, '127.0.0.1', () => {
       serverInstance = srv;
       resolve(srv);
     });
   });
 }
+
+// Only the app's own page may use the native bridge (shell, files, dialogs).
+function isTrusted(ev) {
+  try {
+    return new URL(ev.senderFrame?.url || ev.sender.getURL()).origin === APP_ORIGIN;
+  } catch {
+    return false;
+  }
+}
+
+function handle(channel, fn) {
+  ipcMain.handle(channel, async (ev, ...args) => {
+    if (!isTrusted(ev)) throw new Error('Blocked: this request did not come from the Abli Code app.');
+    return fn(ev, ...args);
+  });
+}
+
+// Actions that change things or reveal the screen need a yes from the person at the keyboard.
+const NEEDS_APPROVAL = {
+  computer_run_shell: 'run a command on your computer',
+  computer_write_file: 'create or overwrite a file',
+  computer_mouse_click: 'click with your mouse',
+  computer_type_text: 'type with your keyboard',
+  computer_screenshot: 'take a screenshot of your screen'
+};
+const approvedThisSession = new Set();
+
+async function askApproval(toolName, args) {
+  if (approvedThisSession.has(toolName)) return true;
+  const detail = JSON.stringify(args || {}, null, 2).slice(0, 800);
+  const res = await dialog.showMessageBox(mainWindow, {
+    type: 'question',
+    buttons: ['Allow once', 'Allow for this session', 'Deny'],
+    defaultId: 2,
+    cancelId: 2,
+    noLink: true,
+    title: 'Abli Code',
+    message: `Abli Code wants to ${NEEDS_APPROVAL[toolName]}.`,
+    detail
+  });
+  if (res.response === 1) approvedThisSession.add(toolName);
+  return res.response !== 2;
+}
+
+// Pages other than the app itself (for example Stripe checkout) may load in the window,
+// but anything else opens in the default browser.
+const INWINDOW_HOSTS = [/(^|\.)stripe\.com$/];
+const SIGNIN_HOSTS = [/(^|\.)github\.com$/, /(^|\.)google\.com$/, /\.supabase\.co$/];
 
 function createWindow() {
   const appIcon = nativeImage.createFromPath(ICON_PATH);
@@ -68,12 +134,11 @@ function createWindow() {
     mainWindow?.setTitle('Abli Code');
   });
 
-  // GitHub, Google, and Supabase sign-in always open in the default browser, never in this window.
-  const SIGNIN_HOSTS = [/(^|\.)github\.com$/, /(^|\.)google\.com$/, /\.supabase\.co$/];
   mainWindow.webContents.on('will-navigate', (event, url) => {
     try {
       const u = new URL(url);
-      if (/^https?:$/.test(u.protocol) && SIGNIN_HOSTS.some((re) => re.test(u.hostname))) {
+      if (!/^https?:$/.test(u.protocol) || u.origin === APP_ORIGIN) return;
+      if (SIGNIN_HOSTS.some((re) => re.test(u.hostname)) || !INWINDOW_HOSTS.some((re) => re.test(u.hostname))) {
         event.preventDefault();
         shell.openExternal(url);
       }
@@ -81,51 +146,50 @@ function createWindow() {
   });
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     try {
-      const u = new URL(url);
-      if (/^https?:$/.test(u.protocol) && SIGNIN_HOSTS.some((re) => re.test(u.hostname))) {
-        shell.openExternal(url);
-        return { action: 'deny' };
-      }
+      if (/^https?:\/\//i.test(url)) shell.openExternal(url);
     } catch {}
-    return { action: 'allow' };
+    return { action: 'deny' };
   });
 
-  mainWindow.loadURL(`http://127.0.0.1:${localPort}/?desktop=1#/app`);
+  mainWindow.loadURL(`${APP_ORIGIN}/?desktop=1#/app`);
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
 }
 
 app.whenReady().then(async () => {
-  await startEmbeddedServer();
+  if (!BACKEND_URL) await startEmbeddedServer();
 
-  ipcMain.handle('window:minimize', () => mainWindow?.minimize());
-  ipcMain.handle('window:maximize', () => {
+  handle('window:minimize', () => mainWindow?.minimize());
+  handle('window:maximize', () => {
     if (!mainWindow) return;
     if (mainWindow.isMaximized()) mainWindow.unmaximize();
     else mainWindow.maximize();
   });
-  ipcMain.handle('window:close', () => mainWindow?.close());
+  handle('window:close', () => mainWindow?.close());
 
-  ipcMain.handle('dialog:pickFolder', async () => {
+  handle('dialog:pickFolder', async () => {
     const res = await dialog.showOpenDialog(mainWindow, { properties: ['openDirectory'] });
     return res.canceled ? null : res.filePaths[0];
   });
 
-  ipcMain.handle('dialog:pickFile', async () => {
+  handle('dialog:pickFile', async () => {
     const res = await dialog.showOpenDialog(mainWindow, { properties: ['openFile'] });
     return res.canceled ? null : res.filePaths[0];
   });
 
-  ipcMain.handle('computer:invoke', async (_ev, { toolName, args }) => {
+  handle('computer:invoke', async (_ev, { toolName, args }) => {
+    if (NEEDS_APPROVAL[toolName] && !(await askApproval(toolName, args))) {
+      return { ok: false, exitCode: 1, stdout: '', stderr: 'The user denied this action.' };
+    }
     return executeComputerTool(toolName, args || {});
   });
 
-  ipcMain.handle('rea:invoke', async (_ev, { toolName, args }) => {
+  handle('rea:invoke', async (_ev, { toolName, args }) => {
     return executeReaTool(toolName, args || {});
   });
 
-  ipcMain.handle('shell:openExternal', async (_ev, url) => {
+  handle('shell:openExternal', async (_ev, url) => {
     if (!/^https?:\/\//i.test(String(url))) return { ok: false };
     await shell.openExternal(url);
     return { ok: true };

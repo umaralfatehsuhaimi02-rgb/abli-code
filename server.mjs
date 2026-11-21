@@ -232,7 +232,7 @@ export function createAbliServer() {
         const provider = urlObj.searchParams.get('provider') === 'google' ? 'google' : 'github';
         const loginId = crypto.randomBytes(24).toString('hex');
         desktopLogins.set(loginId, { status: 'pending', createdAt: Date.now() });
-        const origin = `http://${req.headers.host}`;
+        const origin = `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host}`;
         const result = await getOAuthAuthorizeUrl(provider, `${origin}/auth/desktop-callback?login=${loginId}`);
         return json(res, 200, { url: result.url, loginId });
       }
