@@ -1,6 +1,6 @@
 {
   "name": "abli-code",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Abli Code - Open-source AI coding desktop app, web workspace, Stripe & Supabase gateway, and MCP hub.",
   "type": "module",
   "main": "desktop/main.mjs",
@@ -18,7 +18,8 @@
     "desktop": "electron .",
     "desktop:build": "npm run build && electron .",
     "dist": "npm run build && electron-builder",
-    "test": "node scripts/test.mjs"
+    "test": "node scripts/test.mjs",
+    "cli": "node cli/abli.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
@@ -80,5 +81,8 @@
       "uninstallerIcon": "public/icon.ico"
     },
     "copyright": "Copyright (c) 2026 Abli Code"
+  },
+  "bin": {
+    "abli": "cli/abli.mjs"
   }
 }

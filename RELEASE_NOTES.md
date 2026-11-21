@@ -15,3 +15,7 @@ Windows builds of Abli Code, a chat workspace built for abliterated models.
 The installers are not code signed yet, so Windows SmartScreen may warn. Choose More info, then Run anyway.
 
 The 32-bit (x86) build uses Electron 43, because Electron 45 no longer ships 32-bit Windows builds.
+
+## Abli Code CLI
+
+New: a terminal version. Download `abli.mjs` (and `abli.cmd` on Windows) and run `node abli.mjs login`. Needs Node 18 or newer.

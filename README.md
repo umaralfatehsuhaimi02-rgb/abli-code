@@ -133,3 +133,16 @@ npx electron-builder --win nsis zip --ia32 -c.electronVersion=43.8.12
 ## License
 
 MIT. Muse Spark Open is used under Meta's Muse Model License.
+## Abli Code CLI
+
+Chat with Abli models from any terminal. It can read and write files, run commands and search the web, and asks before it changes anything.
+
+```powershell
+# needs Node 18 or newer
+node abli.mjs login            # sign in with Google in your browser
+node abli.mjs                  # interactive chat in the current folder
+node abli.mjs "fix the failing test"
+type error.log | node abli.mjs "what went wrong"
+```
+
+Download `abli.mjs` (and `abli.cmd` for Windows) from the [latest release](https://github.com/umaralfatehsuhaimi02-rgb/abli-code/releases/latest), or run `npm link` in this repo to get an `abli` command. Inside the chat: `/model`, `/cd`, `/tools`, `/search`, `/yes`, `/save`, `/clear`, `/exit`. Use `-y` to skip the permission prompts and `--no-tools` for plain chat.
