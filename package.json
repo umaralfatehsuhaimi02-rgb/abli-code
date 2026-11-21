@@ -1,6 +1,6 @@
 {
   "name": "abli-code",
-  "version": "1.0.4",
+  "version": "1.0.3",
   "description": "Abli Code - Open-source AI coding desktop app, web workspace, Stripe & Supabase gateway, and MCP hub.",
   "type": "module",
   "main": "desktop/main.mjs",

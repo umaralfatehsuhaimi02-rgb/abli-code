@@ -8,7 +8,10 @@ import { COMPUTER_TOOLS, executeComputerTool } from '../lib/computer-control.mjs
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.resolve(__dirname, '..');
-const MCP_CONFIG_PATH = path.join(ROOT_DIR, '.abli-data', 'mcp-servers.json');
+// Packaged apps keep their data in the user's profile (ABLI_DATA_DIR); the app folder itself is read-only.
+const MCP_DATA_DIR = process.env.ABLI_DATA_DIR || path.join(ROOT_DIR, '.abli-data');
+const MCP_CONFIG_PATH = path.join(MCP_DATA_DIR, 'mcp-servers.json');
+const SAFE_CWD = /\.asar([\\/]|$)/.test(ROOT_DIR) ? (process.env.USERPROFILE || process.env.HOME || process.cwd()) : ROOT_DIR;
 
 export const STOCK_SERVERS = [
   {
@@ -32,7 +35,11 @@ export const STOCK_SERVERS = [
 ];
 
 async function ensureConfigDir() {
-  await fs.mkdir(path.dirname(MCP_CONFIG_PATH), { recursive: true });
+  try {
+    await fs.mkdir(path.dirname(MCP_CONFIG_PATH), { recursive: true });
+  } catch {
+    // Read-only location: the built-in servers still work, custom ones just cannot be saved.
+  }
 }
 
 export async function loadMcpServers() {
@@ -86,7 +93,7 @@ export async function deleteCustomMcpServer(id) {
 async function callStdioMcp(server, method, params = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(server.command, server.args || [], {
-      cwd: ROOT_DIR,
+      cwd: SAFE_CWD,
       env: { ...process.env, ...(server.env || {}) },
       stdio: ['pipe', 'pipe', 'pipe'],
       shell: process.platform === 'win32'
