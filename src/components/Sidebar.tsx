@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ChevronDown, ChevronRight, CreditCard, Folder, FolderPlus, LogOut, Monitor, Pin, Plug, Plus, Search, Trash2, X
+  ChevronDown, ChevronRight, CreditCard, Folder, FolderPlus, LogOut, Monitor, PanelLeft, Pin, Plug, Plus, Search, Trash2, X
 } from 'lucide-react';
 
 export interface SidebarThread {
@@ -29,6 +29,7 @@ interface SidebarProps {
   onOpenBilling: () => void;
   onLogout: () => void;
   onOpenAuth: () => void;
+  onToggle: () => void;
 }
 
 const RED = '#ff2a43';
@@ -246,7 +247,13 @@ export function Sidebar(p: SidebarProps) {
         minHeight: 0
       }}
     >
-      <div style={{ padding: '12px 10px 4px', display: 'grid', gap: 2 }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '10px 12px 0' }}>
+        <button onClick={p.onToggle} title="Hide sidebar (Ctrl+B)" className="sb-icon-btn">
+          <PanelLeft size={16} />
+        </button>
+      </div>
+
+      <div style={{ padding: '4px 10px 4px', display: 'grid', gap: 2 }}>
         <NavRow icon={<Plus size={15} />} label="New thread" hint="Ctrl N" onClick={() => p.onNew()} />
         <NavRow icon={<Plug size={15} />} label="MCP servers" onClick={p.onOpenMcp} />
         <NavRow icon={<Monitor size={15} />} label="Computer control" active={p.computerOpen} onClick={p.onToggleComputer} />

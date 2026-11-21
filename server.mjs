@@ -53,6 +53,7 @@ import { DAILY_FREE_TOKEN_LIMIT, PLANS, PLATFORM_PRESETS, TOPUP_PACKS, sellPrice
 import {
   createStripeCheckoutSession,
   createStripePortalSession,
+  cancelStripeSubscriptions,
   verifyStripeCheckoutSession,
   verifyStripeWebhookEvent
 } from './lib/stripe.mjs';
@@ -300,10 +301,11 @@ export function createAbliServer() {
             customerEmail: user.email,
             productName: `Abli Code ${plan.name} Plan`,
             metadata: { kind: 'subscription', userId: user.id, planId: plan.id },
+            embedded: Boolean(body.embedded && st.settings.stripePublishableKey),
             successUrl: `${st.settings.appUrl}/#/app?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
             cancelUrl: `${st.settings.appUrl}/#pricing`
           });
-          return json(res, 200, { checkoutUrl: session.url, sessionId: session.id });
+          return json(res, 200, session.client_secret && !session.url ? { clientSecret: session.client_secret, sessionId: session.id, publishableKey: st.settings.stripePublishableKey } : { checkoutUrl: session.url, sessionId: session.id });
         }
 
         const updated = await applySubscription(user.id, body.planId);
@@ -327,10 +329,11 @@ export function createAbliServer() {
             customerEmail: user.email,
             productName: `Abli Code Credits ($${quote.credits.toFixed(2)} + $${quote.fee.toFixed(2)} service fee)`,
             metadata: { kind: 'topup', userId: user.id, amountUsd: String(quote.credits), feeUsd: String(quote.fee) },
+            embedded: Boolean(body.embedded && st.settings.stripePublishableKey),
             successUrl: `${st.settings.appUrl}/#/app?topup=success&session_id={CHECKOUT_SESSION_ID}`,
             cancelUrl: `${st.settings.appUrl}/#/app`
           });
-          return json(res, 200, { checkoutUrl: session.url, sessionId: session.id });
+          return json(res, 200, session.client_secret && !session.url ? { clientSecret: session.client_secret, sessionId: session.id, publishableKey: st.settings.stripePublishableKey } : { checkoutUrl: session.url, sessionId: session.id });
         }
 
         const updated = await applyTopUp(user.id, quote.credits);
@@ -359,6 +362,17 @@ export function createAbliServer() {
         if (md.kind === 'topup' && md.amountUsd) updated = await applyTopUp(user.id, Number(md.amountUsd));
         st.processedStripeSessions.push(session.id);
         await saveState();
+        return json(res, 200, { user: updated });
+      }
+
+      if (pathname === '/api/billing/cancel' && req.method === 'POST') {
+        const user = await getUserByToken(getBearer(req));
+        if (!user) return json(res, 401, { error: 'Sign in required' });
+        const st = await getState();
+        if (st.settings.stripeSecretKey && user.stripeCustomerId) {
+          await cancelStripeSubscriptions(st.settings.stripeSecretKey, user.stripeCustomerId);
+        }
+        const updated = await applySubscription(user.id, 'free');
         return json(res, 200, { user: updated });
       }
 

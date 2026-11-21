@@ -130,9 +130,9 @@ export const api = {
     }),
   logout: () => apiFetch('/api/auth/logout', { method: 'POST' }),
   subscribe: (planId: string) =>
-    apiFetch<{ user?: UserProfile; checkoutUrl?: string; sessionId?: string }>('/api/billing/subscribe', {
+    apiFetch<{ user?: UserProfile; checkoutUrl?: string; sessionId?: string; clientSecret?: string; publishableKey?: string }>('/api/billing/subscribe', {
       method: 'POST',
-      body: JSON.stringify({ planId })
+      body: JSON.stringify({ planId, embedded: true })
     }),
   verifyStripeSession: (sessionId: string) =>
     apiFetch<{ user: UserProfile }>('/api/billing/verify-session', {
@@ -141,10 +141,11 @@ export const api = {
     }),
   openBillingPortal: () =>
     apiFetch<{ url: string }>('/api/billing/portal', { method: 'POST' }),
+  cancelPlan: () => apiFetch<{ user: UserProfile }>('/api/billing/cancel', { method: 'POST' }),
   topup: (amountUsd: number) =>
-    apiFetch<{ user?: UserProfile; checkoutUrl?: string; sessionId?: string }>('/api/billing/topup', {
+    apiFetch<{ user?: UserProfile; checkoutUrl?: string; sessionId?: string; clientSecret?: string; publishableKey?: string }>('/api/billing/topup', {
       method: 'POST',
-      body: JSON.stringify({ amountUsd })
+      body: JSON.stringify({ amountUsd, embedded: true })
     }),
   billingHistory: () => apiFetch<{ transactions: any[]; usage: any[] }>('/api/billing/history'),
   chat: (payload: {

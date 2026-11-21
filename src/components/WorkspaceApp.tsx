@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowUp, Check, ChevronDown, Cpu, CreditCard, FolderOpen,
   LogOut, PanelLeft, Maximize2, Minimize2, Monitor, Plus, Plug,
@@ -8,6 +8,7 @@ import { api, CatalogResponse, ModelConfig, UserProfile } from '../lib/api';
 import { ShapeArt } from './ShapeArt';
 import { AbliLogo } from './AbliLogo';
 import { Sidebar } from './Sidebar';
+import { CheckoutModal, CheckoutRequest } from './CheckoutModal';
 
 interface ThreadMessage {
   id: string;
@@ -77,7 +78,7 @@ export function WorkspaceApp({
   const isDesktop = Boolean((window as any).abliDesktop?.isDesktop);
   const desktopApi = (window as any).abliDesktop;
 
-  const defaultModelSlug = catalog.models[0]?.slug || 'glm-5.3-flash-abliterated';
+  const defaultModelSlug = catalog.models[0]?.slug || 'deepseek-v4.1-flash-fast';
   const [threads, setThreads] = useState<Thread[]>(() => loadSavedThreads(defaultModelSlug, catalog.models.map((m) => m.slug)));
   const [activeThreadId, setActiveThreadId] = useState<string>(() => threads[0]?.id || '');
 
@@ -86,6 +87,7 @@ export function WorkspaceApp({
     [threads, activeThreadId]
   );
 
+  const [checkoutReq, setCheckoutReq] = useState<CheckoutRequest | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(() => {
     try { return localStorage.getItem('abli_sidebar_open') !== '0'; } catch { return true; }
   });
@@ -371,97 +373,6 @@ export function WorkspaceApp({
 
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#060608', color: '#fafafa', overflow: 'hidden' }}>
-      {/* Sleek Codex-Style Top Window Bar */}
-      <header
-        className="drag-region"
-        style={{
-          height: 50,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0 14px',
-          borderBottom: '1px solid rgba(255,255,255,0.14)',
-          background: '#060608',
-          flexShrink: 0
-        }}
-      >
-        <div className="no-drag" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button
-            onClick={() => setSidebarOpen((v) => !v)}
-            title="Toggle sidebar (Ctrl+B)"
-            className="glass-pill"
-            style={{ padding: '6px 8px', display: 'inline-flex', alignItems: 'center', cursor: 'pointer', color: sidebarOpen ? '#ff6b7d' : '#c4c4d0' }}
-          >
-            <PanelLeft size={15} />
-          </button>
-
-          <button
-            onClick={onBackLanding}
-            title={isDesktop ? 'Abli Code' : 'Back to website'}
-            style={{ background: 'none', border: 'none', color: '#fff', display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer', padding: '4px 6px', borderRadius: 10 }}
-          >
-            <AbliLogo size={24} />
-            <span style={{ fontWeight: 700, fontSize: 14.5, letterSpacing: '-0.02em' }}>Abli Code</span>
-          </button>
-
-          <button
-            onClick={pickWorkspaceFolder}
-            className="glass-pill"
-            style={{
-              padding: '5px 12px',
-              fontSize: 12,
-              color: activeThread?.workspacePath ? '#e4e4ec' : '#8e8e9c',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              cursor: 'pointer'
-            }}
-          >
-            <FolderOpen size={13} color="#ff2a43" />
-            <span style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {activeThread?.workspacePath || 'Select project folder'}
-            </span>
-          </button>
-        </div>
-
-        <div className="no-drag" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button
-            onClick={() => setComputerDrawerOpen((v) => !v)}
-            className="glass-pill"
-            style={{
-              padding: '6px 12px',
-              fontSize: 12,
-              color: computerDrawerOpen ? '#ff6b7d' : '#c4c4d0',
-              borderColor: computerDrawerOpen ? 'rgba(255,42,67,0.4)' : undefined,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              cursor: 'pointer'
-            }}
-          >
-            <Monitor size={13} /> Computer
-          </button>
-
-          <button
-            onClick={() => {
-              setBillingOpen(true);
-              refreshBillingHistory();
-            }}
-            className="glass-pill"
-            style={{ padding: '6px 12px', fontSize: 12, color: '#e4e4ec', display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
-          >
-            <CreditCard size={13} color="#ff2a43" />
-            {user ? `${user.plan.toUpperCase()} / $${user.creditBalanceUsd.toFixed(2)}` : 'Plans'}
-          </button>
-
-          {!user && (
-            <button className="btn-red" style={{ padding: '6px 14px', fontSize: 12 }} onClick={onOpenAuth}>
-              Sign in
-            </button>
-          )}
-
-        </div>
-      </header>
 
       {/* Main 2-or-3-Column Codex Layout */}
       <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
@@ -495,11 +406,34 @@ export function WorkspaceApp({
             onOpenBilling={() => { setBillingOpen(true); refreshBillingHistory(); }}
             onLogout={onLogout}
             onOpenAuth={onOpenAuth}
+            onToggle={() => setSidebarOpen(false)}
           />
         )}
 
         {/* Center Codex Thread Canvas */}
         <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, position: 'relative' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px 0', flexShrink: 0, minHeight: 44 }}>
+            {!sidebarOpen && (
+              <button
+                onClick={() => setSidebarOpen(true)}
+                title="Show sidebar (Ctrl+B)"
+                className="glass-pill"
+                style={{ padding: '6px 8px', display: 'inline-flex', alignItems: 'center', cursor: 'pointer', color: '#c4c4d0' }}
+              >
+                <PanelLeft size={15} />
+              </button>
+            )}
+            <button
+              onClick={pickWorkspaceFolder}
+              className="glass-pill"
+              style={{ padding: '5px 12px', fontSize: 12, color: activeThread?.workspacePath ? '#e4e4ec' : '#8e8e9c', display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+            >
+              <FolderOpen size={13} color="#ff2a43" />
+              <span style={{ maxWidth: 360, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {activeThread?.workspacePath || 'Select project folder'}
+              </span>
+            </button>
+          </div>
           <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '28px 24px 16px' }}>
             <div style={{ maxWidth: 820, margin: '0 auto' }}>
               {activeThread?.messages.length === 0 ? (
@@ -1067,7 +1001,23 @@ export function WorkspaceApp({
       )}
 
       {/* Plans & Stripe Top-Up Modal (Undisclosed backend cap) */}
-      {billingOpen && (
+              <CheckoutModal
+          req={checkoutReq}
+          onClose={() => setCheckoutReq(null)}
+          onComplete={async (sid) => {
+            try {
+              const r = await api.verifyStripeSession(sid);
+              onUserChange(r.user);
+            } catch (e: any) {
+              alert(e.message);
+            }
+            setCheckoutReq(null);
+            setBillingOpen(false);
+            refreshBillingHistory();
+          }}
+        />
+
+{billingOpen && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 90, background: 'rgba(0,0,0,0.78)', display: 'grid', placeItems: 'center', padding: 16 }}>
           <div className="pop-in" style={{ width: '100%', maxWidth: 820, maxHeight: '90vh', overflowY: 'auto', background: '#0e0e13', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 24, padding: 26 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
@@ -1078,20 +1028,21 @@ export function WorkspaceApp({
                 </p>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
-                {user && (
+                {user && user.plan !== 'free' && (
                   <button
                     className="btn-outline"
                     style={{ padding: '7px 14px', fontSize: 12 }}
                     onClick={async () => {
+                      if (!window.confirm('Cancel your ' + user.plan.toUpperCase() + ' plan now? You will move to the Free plan.')) return;
                       try {
-                        const r = await api.openBillingPortal();
-                        window.open(r.url, '_blank');
+                        const r = await api.cancelPlan();
+                        onUserChange(r.user);
                       } catch (e: any) {
                         alert(e.message);
                       }
                     }}
                   >
-                    Manage in Stripe
+                    Cancel plan
                   </button>
                 )}
                 <button onClick={() => setBillingOpen(false)} style={{ background: 'none', border: 'none', color: '#8e8e9c', cursor: 'pointer' }}><X size={20} /></button>
@@ -1115,7 +1066,8 @@ export function WorkspaceApp({
                       setBillingBusy(p.id);
                       try {
                         const r = await api.subscribe(p.id);
-                        if (r.checkoutUrl) window.location.href = r.checkoutUrl;
+                        if (r.clientSecret && r.publishableKey && r.sessionId) setCheckoutReq({ clientSecret: r.clientSecret, publishableKey: r.publishableKey, sessionId: r.sessionId, title: p.name + ' plan, $' + p.priceUsd + '/mo' });
+                        else if (r.checkoutUrl) window.location.href = r.checkoutUrl;
                         else if (r.user) onUserChange(r.user);
                       } finally {
                         setBillingBusy('');
@@ -1129,7 +1081,7 @@ export function WorkspaceApp({
             </div>
 
             <div style={{ background: '#14141b', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: 16, marginBottom: 16 }}>
-              <div style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 10 }}>Top Up Credits with Stripe</div>
+              <div style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 10 }}>Top up credits</div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {catalog.topUpPacks.map((pack) => (
                   <button
@@ -1139,7 +1091,8 @@ export function WorkspaceApp({
                     onClick={async () => {
                       if (!user) return onOpenAuth();
                       const r = await api.topup(pack.amountUsd);
-                      if (r.checkoutUrl) window.location.href = r.checkoutUrl;
+                      if (r.clientSecret && r.publishableKey && r.sessionId) setCheckoutReq({ clientSecret: r.clientSecret, publishableKey: r.publishableKey, sessionId: r.sessionId, title: '$' + pack.amountUsd + ' credits' });
+                      else if (r.checkoutUrl) window.location.href = r.checkoutUrl;
                       else if (r.user) onUserChange(r.user);
                     }}
                   >
