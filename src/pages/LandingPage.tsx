@@ -3,8 +3,8 @@ import { ArrowDown, Download, Github, Globe } from 'lucide-react';
 import { CatalogResponse, UserProfile } from '../lib/api';
 import { AbliLogo } from '../components/AbliLogo';
 
-const RELEASES_URL = 'https://github.com/umaralfatehsuhaimi02-rgb/abli-code/releases/latest';
-const REPO_URL = 'https://github.com/umaralfatehsuhaimi02-rgb/abli-code';
+const RELEASES_URL = 'https://github.com/umaralfatehsuhaimi02-rgb/abli-code-releases/releases/latest';
+const REPO_URL = 'https://github.com/umaralfatehsuhaimi02-rgb/abli-code-releases';
 const RED = '#ff2a43';
 const INK = '#060608';
 const PAPER = '#fafafa';
