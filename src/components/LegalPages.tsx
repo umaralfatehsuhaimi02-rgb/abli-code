@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { ArrowLeft, Mail, ShieldCheck } from 'lucide-react';
 
 export function LegalPages({
@@ -30,7 +30,7 @@ export function LegalPages({
           </div>
           <h1 style={{ fontSize: 32, fontWeight: 800, margin: '0 0 8px', letterSpacing: '-0.025em' }}>{titles[section]}</h1>
           <p style={{ color: '#8e8e9c', fontSize: 13, margin: '0 0 28px' }}>
-            Effective November 21, 2026 · Operator Contact:{' '}
+            Effective November 21, 2026 Â/ Operator Contact:{' '}
             <a href={`mailto:${contactEmail}`} style={{ color: '#ff6b7d', textDecoration: 'underline' }}>{contactEmail}</a>
           </p>
 
@@ -119,3 +119,4 @@ export function LegalPages({
     </div>
   );
 }
+

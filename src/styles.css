@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   --bg: #060608;
   --surface: #0c0c10;
   --surface-2: #121218;
@@ -103,13 +103,9 @@ button, input, select, textarea {
   100% { transform: translateX(-50%); }
 }
 
-.orb-primary {
-  animation: floatOrb 11s ease-in-out infinite;
-}
 
-.orb-secondary {
-  animation: floatOrbSlow 15s ease-in-out infinite;
-}
+
+
 
 .fade-up {
   animation: smoothFadeUp 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -134,11 +130,9 @@ button, input, select, textarea {
   border-radius: 999px;
   font-weight: 600;
   cursor: pointer;
-  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease, filter 0.2s ease;
 }
 .btn-red:hover {
   transform: translateY(-1.5px);
-  box-shadow: 0 10px 28px var(--red-glow);
   filter: brightness(1.06);
 }
 .btn-red:active {
@@ -148,7 +142,6 @@ button, input, select, textarea {
   opacity: 0.45;
   cursor: not-allowed;
   transform: none;
-  box-shadow: none;
 }
 
 .btn-outline {
@@ -170,12 +163,10 @@ button, input, select, textarea {
   background: linear-gradient(180deg, rgba(18, 18, 24, 0.9) 0%, rgba(12, 12, 16, 0.94) 100%);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  transition: border-color 0.25s ease, transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.28s ease;
 }
 .card-bwr:hover {
   border-color: rgba(255, 42, 67, 0.42);
   transform: translateY(-3px);
-  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.45);
 }
 
 .glass-pill {
@@ -210,3 +201,4 @@ button, input, select, textarea {
 .no-drag {
   -webkit-app-region: no-drag;
 }
+
