@@ -26,6 +26,7 @@ export function App() {
   const [route, setRoute] = useState<RouteView>(resolveRoute);
   const [catalog, setCatalog] = useState<CatalogResponse | null>(null);
   const [user, setUser] = useState<UserProfile | null>(null);
+  const [sessionChecked, setSessionChecked] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [operatorOpen, setOperatorOpen] = useState(false);
   const [cookieOpen, setCookieOpen] = useState(false);
@@ -35,14 +36,19 @@ export function App() {
   useEffect(() => {
     loadCatalog();
     if (getToken()) {
-      api.getMe().then((r) => setUser(r.user)).catch(() => setToken(''));
+      api
+        .getMe()
+        .then((r) => setUser(r.user))
+        .catch(() => setToken(''))
+        .finally(() => setSessionChecked(true));
+    } else {
+      setSessionChecked(true);
     }
 
     const searchStr = window.location.hash.includes('?')
       ? window.location.hash.split('?')[1]
       : window.location.search.replace(/^\?/, '');
-    const stripeParams = new URLSearchParams(searchStr);
-    const sessionId = stripeParams.get('session_id');
+    const sessionId = new URLSearchParams(searchStr).get('session_id');
     if (sessionId && getToken()) {
       api
         .verifyStripeSession(sessionId)
@@ -88,18 +94,18 @@ export function App() {
     } catch {}
     setToken('');
     setUser(null);
+    navigate('landing');
   };
 
-  if (!catalog) {
+  if (!catalog || !sessionChecked) {
     return (
       <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: '#060608', color: '#fafafa' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-          <AbliLogo size={40} />
-          <span style={{ fontSize: 13, color: '#8e8e9c' }}>Loading Abli Code...</span>
-        </div>
+        <AbliLogo size={44} />
       </div>
     );
   }
+
+  const appRequiresLogin = route === 'app' && !user;
 
   return (
     <>
@@ -115,7 +121,7 @@ export function App() {
         />
       )}
 
-      {route === 'app' && (
+      {route === 'app' && user && (
         <WorkspaceApp
           catalog={catalog}
           user={user}
@@ -128,27 +134,28 @@ export function App() {
       )}
 
       {(route === 'terms' || route === 'privacy' || route === 'aup' || route === 'cookies') && (
-        <LegalPages
-          section={route}
-          contactEmail={catalog.contactEmail}
-          onBack={() => navigate('landing')}
-        />
+        <LegalPages section={route} contactEmail={catalog.contactEmail} onBack={() => navigate('landing')} />
+      )}
+
+      {appRequiresLogin && (
+        <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: '#060608' }}>
+          <div style={{ color: '#8e8e9c', fontSize: 14 }}>Sign in to open Abli Code.</div>
+        </div>
       )}
 
       <AuthModal
-        open={authOpen}
-        onClose={() => setAuthOpen(false)}
+        open={authOpen || appRequiresLogin}
+        onClose={() => {
+          setAuthOpen(false);
+          if (appRequiresLogin) navigate('landing');
+        }}
         onAuthed={(u) => {
           setUser(u);
           navigate('app');
         }}
       />
 
-      <OperatorModal
-        open={operatorOpen}
-        onClose={() => setOperatorOpen(false)}
-        onSaved={() => loadCatalog()}
-      />
+      <OperatorModal open={operatorOpen} onClose={() => setOperatorOpen(false)} onSaved={() => loadCatalog()} />
 
       <CookieBanner
         forceOpen={cookieOpen}
