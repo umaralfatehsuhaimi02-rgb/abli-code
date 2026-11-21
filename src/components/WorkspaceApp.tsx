@@ -1,16 +1,19 @@
 ﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowUp, Check, ChevronDown, Cpu, CreditCard, FolderOpen,
-  LogOut, PanelLeft, Maximize2, Minimize2, Monitor, Plus, Plug,
+  LogOut, PanelLeft, Paperclip, Maximize2, Minimize2, Monitor, Plus, Plug,
   Settings, Sparkles, Trash2, Wrench, X
 } from 'lucide-react';
 import { api, CatalogResponse, ModelConfig, UserProfile } from '../lib/api';
 import { ShapeArt } from './ShapeArt';
 import { AbliLogo } from './AbliLogo';
 import { Sidebar } from './Sidebar';
+import { AttachmentBar, MessageAttachments } from './AttachmentBar';
+import { Attachment, readFiles, toApiMessage } from '../lib/attachments';
 import { CheckoutModal, CheckoutRequest } from './CheckoutModal';
 
 interface ThreadMessage {
+  attachments?: Attachment[];
   id: string;
   role: 'user' | 'assistant';
   content: string;
@@ -88,6 +91,14 @@ export function WorkspaceApp({
   );
 
   const [checkoutReq, setCheckoutReq] = useState<CheckoutRequest | null>(null);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [attachNote, setAttachNote] = useState('');
+  const addFiles = async (files: File[]) => {
+    if (!files.length) return;
+    const { added, errors } = await readFiles(files, attachments);
+    if (added.length) setAttachments((cur) => [...cur, ...added]);
+    setAttachNote(errors.join(' '));
+  };
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(() => {
     try { return localStorage.getItem('abli_sidebar_open') !== '0'; } catch { return true; }
   });
@@ -123,7 +134,16 @@ export function WorkspaceApp({
 
   useEffect(() => {
     try {
-      localStorage.setItem(THREADS_KEY, JSON.stringify(threads.slice(0, 30)));
+      // Photos are large: keep them only on the last two messages of the open thread so storage never fills up.
+      const slim = threads.slice(0, 30).map((t) => ({
+        ...t,
+        messages: t.messages.map((m, i) =>
+          m.attachments && !(t.id === activeThreadId && i >= t.messages.length - 2)
+            ? { ...m, attachments: m.attachments.map((a) => (a.kind === 'image' ? { ...a, dataUrl: undefined } : a)) }
+            : m
+        )
+      }));
+      localStorage.setItem(THREADS_KEY, JSON.stringify(slim));
     } catch {}
   }, [threads]);
 
@@ -260,25 +280,30 @@ export function WorkspaceApp({
 
   const sendPrompt = async (overrideText?: string) => {
     const text = (overrideText ?? input).trim();
-    if (!text || sending) return;
+    if ((!text && attachments.length === 0) || sending) return;
     if (!user) {
       onOpenAuth();
       return;
     }
 
     setChatError('');
-    if (!overrideText) setInput('');
+    if (!overrideText) {
+      setInput('');
+      setAttachments([]);
+      setAttachNote('');
+    }
 
     const userMsg: ThreadMessage = {
       id: crypto.randomUUID(),
       role: 'user',
       content: text,
+      attachments: !overrideText && attachments.length ? attachments : undefined,
       createdAt: new Date().toISOString()
     };
 
     const nextMessages = [...activeThread.messages, userMsg];
     const nextTitle =
-      activeThread.messages.length === 0 ? text.slice(0, 42) + (text.length > 42 ? '...' : '') : activeThread.title;
+      activeThread.messages.length === 0 ? (text || attachments[0]?.name || 'Attachment').slice(0, 42) + (text.length > 42 ? '...' : '') : activeThread.title;
 
     updateActiveThread((t) => ({
       ...t,
@@ -291,7 +316,7 @@ export function WorkspaceApp({
     try {
       const res = await api.chat({
         modelSlug: activeModel.slug,
-        messages: nextMessages.map((m) => ({ role: m.role, content: m.content })),
+        messages: nextMessages.map((m, i) => toApiMessage(m, i === nextMessages.length - 1)),
         enableTools: enabledServers.length > 0,
         computerControlEnabled: enabledServers.includes('stock-computer'),
         enabledServers,
@@ -500,6 +525,7 @@ export function WorkspaceApp({
                           }}
                         >
                           {m.content}
+                          {m.attachments && m.attachments.length > 0 && <MessageAttachments items={m.attachments} />}
                         </div>
                       ) : (
                         <div style={{ width: '100%', display: 'grid', gap: 10 }}>
@@ -553,6 +579,7 @@ export function WorkspaceApp({
                   {sending && (
                     <div className="pop-in" style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#9b9ba8', padding: '6px 4px' }}>
                       <AbliLogo size={18} />
+                      <span className="think-shapes" aria-hidden="true"><i /><i /><i /></span>
                       <span>Thinking with {activeModel?.name}...</span>
                     </div>
                   )}
@@ -760,7 +787,28 @@ export function WorkspaceApp({
                   padding: '12px 14px',
                 }}
               >
+                {(attachments.length > 0 || attachNote) && (
+                  <AttachmentBar
+                    items={attachments}
+                    note={attachNote || (attachments.some((a) => a.kind === 'image') && !activeModel?.vision ? (activeModel?.name || 'This model') + ' may not be able to see photos. Muse Spark Open can.' : '')}
+                    onRemove={(id) => setAttachments((cur) => cur.filter((a) => a.id !== id))}
+                  />
+                )}
                 <textarea
+                  onPaste={(e) => {
+                    const pasted = Array.from(e.clipboardData.files || []);
+                    if (pasted.length) {
+                      e.preventDefault();
+                      addFiles(pasted);
+                    }
+                  }}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    if (e.dataTransfer.files && e.dataTransfer.files.length) {
+                      e.preventDefault();
+                      addFiles(Array.from(e.dataTransfer.files));
+                    }
+                  }}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => {
@@ -786,6 +834,26 @@ export function WorkspaceApp({
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <input
+                      id="abli-file-input"
+                      type="file"
+                      multiple
+                      accept="image/*,.txt,.md,.json,.csv,.log,.yaml,.yml,.toml,.xml,.html,.css,.js,.mjs,.jsx,.ts,.tsx,.py,.rb,.go,.rs,.java,.kt,.c,.h,.cpp,.cs,.php,.sh,.ps1,.sql"
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        const list = Array.from(e.target.files || []);
+                        e.target.value = '';
+                        addFiles(list);
+                      }}
+                    />
+                    <button
+                      onClick={() => document.getElementById('abli-file-input')?.click()}
+                      className="glass-pill"
+                      title="Attach photos or files"
+                      style={{ padding: '6px 9px', display: 'inline-flex', alignItems: 'center', cursor: 'pointer', color: attachments.length ? '#ff6b7d' : '#c4c4d0' }}
+                    >
+                      <Paperclip size={14} />
+                    </button>
                     <button
                       onClick={() => {
                         setToolsMenuOpen(false);
@@ -1049,9 +1117,10 @@ export function WorkspaceApp({
               </div>
             </div>
 
+            <p style={{ fontSize: 12, color: '#8e8e9c', margin: '0 0 10px' }}>Switch plans anytime. Changes are prorated, and Free ends your paid plan right away.</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(175px, 1fr))', gap: 12, marginBottom: 20 }}>
               {catalog.plans.map((p) => (
-                <div key={p.id} style={{ background: '#14141b', border: `1px solid ${user?.plan === p.id ? '#ff2a43' : 'rgba(255,255,255,0.08)'}`, borderRadius: 16, padding: 16, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div key={p.id} className="plan-card" style={{ background: '#14141b', border: `1px solid ${user?.plan === p.id ? '#ff2a43' : 'rgba(255,255,255,0.08)'}`, borderRadius: 16, padding: 16, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                   <div>
                     <div style={{ fontSize: 16, fontWeight: 700 }}>{p.name}</div>
                     <div style={{ fontSize: 26, fontWeight: 800, margin: '6px 0' }}>${p.priceUsd}<span style={{ fontSize: 12, color: '#8e8e9c' }}>/mo</span></div>
@@ -1063,6 +1132,7 @@ export function WorkspaceApp({
                     disabled={billingBusy === p.id}
                     onClick={async () => {
                       if (!user) return onOpenAuth();
+                      if (p.priceUsd === 0 && !window.confirm('Switch to Free? Your paid plan ends now.')) return;
                       setBillingBusy(p.id);
                       try {
                         const r = await api.subscribe(p.id);
@@ -1074,7 +1144,7 @@ export function WorkspaceApp({
                       }
                     }}
                   >
-                    {user?.plan === p.id ? 'Current Plan' : `Switch to ${p.name}`}
+                    {user?.plan === p.id ? 'Current plan' : p.priceUsd === 0 ? 'Switch to Free' : p.priceUsd > (catalog.plans.find((x) => x.id === user?.plan)?.priceUsd ?? 0) ? 'Upgrade to ' + p.name : 'Downgrade to ' + p.name}
                   </button>
                 </div>
               ))}

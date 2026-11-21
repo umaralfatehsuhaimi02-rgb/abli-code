@@ -236,7 +236,7 @@ export function Sidebar(p: SidebarProps) {
     setCollapsed((c) => (c.includes(path) ? c.filter((x) => x !== path) : [...c, path]));
 
   return (
-    <aside
+    <aside className="sb-root"
       style={{
         width: 276,
         borderRight: '1px solid rgba(255,255,255,0.07)',

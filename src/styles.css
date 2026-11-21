@@ -229,3 +229,40 @@ button, input, select, textarea {
 .sb-icon-btn:hover{color:#ff2a43;background:rgba(255,255,255,.06)}
 
 .sb-act2{right:34px}
+
+/* motion */
+@keyframes rowIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:none}}
+@keyframes sbSlide{from{opacity:0;transform:translateX(-18px)}to{opacity:1;transform:none}}
+@keyframes overlayIn{from{opacity:0}to{opacity:1}}
+@keyframes modalIn{from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes cardIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes thinkBounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-7px)}}
+@keyframes barGrow{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+.sb-root{animation:sbSlide .32s cubic-bezier(.2,.8,.2,1) both}
+.sb-thread{animation:rowIn .34s cubic-bezier(.2,.8,.2,1) both}
+.sb-thread:nth-child(2){animation-delay:.04s}
+.sb-thread:nth-child(3){animation-delay:.08s}
+.sb-thread:nth-child(4){animation-delay:.12s}
+.sb-thread:nth-child(5){animation-delay:.16s}
+.sb-thread:nth-child(6){animation-delay:.2s}
+.sb-thread:nth-child(7){animation-delay:.24s}
+.sb-thread:nth-child(8){animation-delay:.28s}
+.sb-active>span:first-child{transform-origin:center;animation:barGrow .26s ease both}
+div[style*="position: fixed"][style*="z-index: 90"],div[style*="position: fixed"][style*="z-index: 120"]{animation:overlayIn .2s ease both}
+div[style*="position: fixed"][style*="z-index: 90"]>div,div[style*="position: fixed"][style*="z-index: 120"]>div{animation:modalIn .3s cubic-bezier(.2,.8,.2,1) both}
+.plan-card{animation:cardIn .42s cubic-bezier(.2,.8,.2,1) both;transition:transform .2s ease,border-color .2s ease}
+.plan-card:nth-child(2){animation-delay:.06s}
+.plan-card:nth-child(3){animation-delay:.12s}
+.plan-card:nth-child(4){animation-delay:.18s}
+.plan-card:hover{transform:translateY(-4px)}
+.btn-red,.btn-outline,.glass-pill,.sb-icon-btn{transition:transform .16s ease,background-color .2s ease,border-color .2s ease,color .2s ease}
+.btn-red:hover,.btn-outline:hover,.glass-pill:hover{transform:translateY(-1px)}
+.btn-red:active,.btn-outline:active,.glass-pill:active,.sb-icon-btn:active{transform:scale(.96)}
+.think-shapes{display:inline-flex;align-items:center;gap:6px}
+.think-shapes i{display:block;width:8px;height:8px;background:#ff2a43;animation:thinkBounce 1s ease-in-out infinite}
+.think-shapes i:nth-child(1){border-radius:50%}
+.think-shapes i:nth-child(2){border-radius:2px;animation-delay:.15s}
+.think-shapes i:nth-child(3){border-radius:0;clip-path:polygon(50% 0,0 100%,100% 100%);animation-delay:.3s}
+main{animation:overlayIn .4s ease both}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;animation-delay:0s!important;transition-duration:.001ms!important}}
+.att-chip{animation:cardIn .28s cubic-bezier(.2,.8,.2,1) both}

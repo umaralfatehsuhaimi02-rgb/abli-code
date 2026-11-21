@@ -54,6 +54,7 @@ import {
   createStripeCheckoutSession,
   createStripePortalSession,
   cancelStripeSubscriptions,
+  switchStripeSubscription,
   verifyStripeCheckoutSession,
   verifyStripeWebhookEvent
 } from './lib/stripe.mjs';
@@ -91,16 +92,39 @@ function json(res, status, data) {
   res.end(JSON.stringify(data));
 }
 
-async function readBody(req) {
+async function readBody(req, maxBytes = 4 * 1024 * 1024) {
   const chunks = [];
   let size = 0;
   for await (const chunk of req) {
     size += chunk.length;
-    if (size > 4 * 1024 * 1024) throw new Error('Payload too large');
+    if (size > maxBytes) throw new Error('Payload too large');
     chunks.push(chunk);
   }
   const text = Buffer.concat(chunks).toString('utf8');
   return text ? JSON.parse(text) : {};
+}
+
+// Chat messages may carry photos as inline data URLs. Anything else (remote URLs, odd part types) is dropped.
+function sanitizeMessages(list) {
+  let images = 0;
+  return list
+    .map((m) => {
+      if (!m || typeof m !== 'object') return null;
+      if (!Array.isArray(m.content)) return m;
+      const parts = [];
+      for (const p of m.content) {
+        if (p && p.type === 'text') parts.push({ type: 'text', text: String(p.text ?? '') });
+        else if (
+          p && p.type === 'image_url' && p.image_url && typeof p.image_url.url === 'string' &&
+          p.image_url.url.startsWith('data:image/') && p.image_url.url.length < 8 * 1024 * 1024 && images < 12
+        ) {
+          images++;
+          parts.push({ type: 'image_url', image_url: { url: p.image_url.url } });
+        }
+      }
+      return { ...m, content: parts };
+    })
+    .filter(Boolean);
 }
 
 function getBearer(req) {
@@ -294,6 +318,18 @@ export function createAbliServer() {
         if (!plan) return json(res, 400, { error: 'Invalid plan' });
 
         if (st.settings.stripeSecretKey && plan.priceUsd > 0) {
+          const sw = await switchStripeSubscription({
+            secretKey: st.settings.stripeSecretKey,
+            customerId: user.stripeCustomerId,
+            customerEmail: user.email,
+            amountUsd: plan.priceUsd,
+            productName: 'Abli Code ' + plan.name + ' Plan',
+            metadata: { kind: 'subscription', userId: user.id, planId: plan.id }
+          });
+          if (sw.switched) {
+            const switched = await applySubscription(user.id, plan.id);
+            return json(res, 200, { user: switched, switched: true });
+          }
           const session = await createStripeCheckoutSession({
             secretKey: st.settings.stripeSecretKey,
             mode: 'subscription',
@@ -308,6 +344,13 @@ export function createAbliServer() {
           return json(res, 200, session.client_secret && !session.url ? { clientSecret: session.client_secret, sessionId: session.id, publishableKey: st.settings.stripePublishableKey } : { checkoutUrl: session.url, sessionId: session.id });
         }
 
+        if (st.settings.stripeSecretKey && plan.priceUsd === 0) {
+          try {
+            await cancelStripeSubscriptions(st.settings.stripeSecretKey, user.stripeCustomerId, user.email);
+          } catch (e) {
+            return json(res, 502, { error: 'Could not end your subscription: ' + (e?.message || e) });
+          }
+        }
         const updated = await applySubscription(user.id, body.planId);
         return json(res, 200, { user: updated });
       }
@@ -369,8 +412,8 @@ export function createAbliServer() {
         const user = await getUserByToken(getBearer(req));
         if (!user) return json(res, 401, { error: 'Sign in required' });
         const st = await getState();
-        if (st.settings.stripeSecretKey && user.stripeCustomerId) {
-          await cancelStripeSubscriptions(st.settings.stripeSecretKey, user.stripeCustomerId);
+        if (st.settings.stripeSecretKey) {
+          await cancelStripeSubscriptions(st.settings.stripeSecretKey, user.stripeCustomerId, user.email);
         }
         const updated = await applySubscription(user.id, 'free');
         return json(res, 200, { user: updated });
@@ -538,7 +581,7 @@ export function createAbliServer() {
       // Chat Completions + Quota Enforcement
       if (pathname === '/api/chat/completions' && req.method === 'POST') {
         const user = await getUserByToken(getBearer(req));
-        const body = await readBody(req);
+        const body = await readBody(req, 16 * 1024 * 1024);
         const st = await getState();
         const model = st.models.find((m) => m.slug === body.modelSlug) || st.models[0];
 
@@ -552,7 +595,7 @@ export function createAbliServer() {
 
         const result = await runChatCompletion({
           model,
-          messages: Array.isArray(body.messages) ? body.messages : [],
+          messages: Array.isArray(body.messages) ? sanitizeMessages(body.messages) : [],
           enableTools: body.enableTools !== false,
           computerControlEnabled: Boolean(body.computerControlEnabled),
           enabledServers: Array.isArray(body.enabledServers) ? body.enabledServers : null,
