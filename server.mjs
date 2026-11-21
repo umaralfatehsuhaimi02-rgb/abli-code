@@ -1,3 +1,11 @@
+import { searchWeb } from './lib/websearch.mjs';
+const searchHits = new Map();
+function allowSearch(id) {
+  const now = Date.now();
+  const arr = (searchHits.get(id) || []).filter((t) => now - t < 60000);
+  if (arr.length >= 20) { searchHits.set(id, arr); return false; }
+  arr.push(now); searchHits.set(id, arr); return true;
+}
 import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -349,6 +357,15 @@ export function createAbliServer() {
         if (!user) return json(res, 401, { error: 'Not authenticated' });
         await syncBilling(user);
         return json(res, 200, { user: sanitizeUser(user) });
+      }
+
+      if (pathname === '/api/search' && req.method === 'GET') {
+        const su = await getUserByToken(getBearer(req));
+        if (!su) return json(res, 401, { error: 'Sign in to search the web.' });
+        if (!allowSearch(su.id)) return json(res, 429, { error: 'Too many searches, try again in a minute.' });
+        const sq = String(new URL(req.url, 'http://x').searchParams.get('q') || '').slice(0, 300).trim();
+        if (!sq) return json(res, 200, { results: [] });
+        try { return json(res, 200, { results: await searchWeb(sq) }); } catch { return json(res, 200, { results: [] }); }
       }
 
       if (pathname === '/api/auth/logout' && req.method === 'POST') {

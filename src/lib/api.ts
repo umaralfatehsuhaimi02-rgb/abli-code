@@ -143,6 +143,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ accessToken })
     }),
+  webSearch: (q: string) => apiFetch<{ results: { title: string; url: string; snippet: string }[] }>('/api/search?q=' + encodeURIComponent(q), { timeoutMs: 10000 }),
   logout: () => apiFetch('/api/auth/logout', { method: 'POST' }),
   subscribe: (planId: string) =>
     apiFetch<{ user?: UserProfile; checkoutUrl?: string; sessionId?: string; clientSecret?: string; publishableKey?: string }>('/api/billing/subscribe', {

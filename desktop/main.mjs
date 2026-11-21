@@ -1,6 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain, nativeImage, nativeTheme, session, shell } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
+import { spawn as spawnUpd } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { executeComputerTool } from '../lib/computer-control.mjs';
 import { executeReaTool } from '../mcp/rea-server.mjs';
@@ -169,7 +170,36 @@ function createWindow() {
   });
 }
 
+function cmpVer(a, b) {
+  const x = String(a).split('.').map((n) => parseInt(n, 10) || 0);
+  const y = String(b).split('.').map((n) => parseInt(n, 10) || 0);
+  for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0) ? 1 : -1; }
+  return 0;
+}
+
+// On launch, look at the latest GitHub release. If it is newer, fetch the setup for this PC in the background and offer to install it.
+async function checkForUpdate() {
+  if (!app.isPackaged) return;
+  const r = await fetch('https://api.github.com/repos/umaralfatehsuhaimi02-rgb/abli-code/releases/latest', { headers: { 'User-Agent': 'abli-code', Accept: 'application/vnd.github+json' } });
+  if (!r.ok) return;
+  const rel = await r.json();
+  const latest = String(rel.tag_name || '').replace(/^v/, '');
+  if (!latest || cmpVer(latest, app.getVersion()) <= 0) return;
+  const arch = process.arch === 'arm64' ? 'arm64' : process.arch === 'ia32' ? 'ia32' : 'x64';
+  const asset = (rel.assets || []).find((a) => a.name === 'Abli-Code-Setup-' + latest + '-' + arch + '.exe');
+  if (!asset) return;
+  const file = path.join(app.getPath('temp'), asset.name);
+  const d = await fetch(asset.browser_download_url);
+  if (!d.ok) return;
+  fs.writeFileSync(file, Buffer.from(await d.arrayBuffer()));
+  const res = await dialog.showMessageBox(mainWindow, { type: 'info', buttons: ['Restart and update', 'Later'], defaultId: 0, cancelId: 1, title: 'Abli Code update', message: 'Abli Code ' + latest + ' is ready', detail: 'Restart now to install it. Your chats stay as they are.' });
+  if (res.response !== 0) return;
+  spawnUpd('cmd.exe', ['/c', 'timeout /t 3 >nul & "' + file + '" /S --force-run'], { detached: true, stdio: 'ignore', windowsHide: true, windowsVerbatimArguments: true }).unref();
+  app.quit();
+}
+
 app.whenReady().then(async () => {
+  setTimeout(() => { checkForUpdate().catch(() => {}); }, 20000);
   if (!BACKEND_URL) await startEmbeddedServer();
 
   handle('window:minimize', () => mainWindow?.minimize());

@@ -1,7 +1,7 @@
 ﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowUp, Check, ChevronDown, Copy, Cpu, CreditCard, FolderOpen, Pencil, RefreshCw, Square,
-  LogOut, PanelLeft, Paperclip, Maximize2, Minimize2, Monitor, Plus, Plug,
+  LogOut, Globe, PanelLeft, Paperclip, Maximize2, Minimize2, Monitor, Plus, Plug,
   Settings, Sparkles, Trash2, Wrench, X
 } from 'lucide-react';
 import { api, CatalogResponse, ModelConfig, UserProfile } from '../lib/api';
@@ -11,6 +11,7 @@ import { Sidebar } from './Sidebar';
 import { ModelShape } from './ModelShape';
 import { Markdown } from './Markdown';
 import { AttachmentBar, MessageAttachments } from './AttachmentBar';
+import { withSearch, sourcesMd, type WebResult } from '../lib/websearch';
 import { Attachment, readFiles, toApiMessage } from '../lib/attachments';
 import { withFileHint } from '../lib/filehint';
 import { CheckoutModal, CheckoutRequest } from './CheckoutModal';
@@ -116,6 +117,7 @@ export function WorkspaceApp({
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const [localOpen, setLocalOpen] = useState(false);
   const [toolsMenuOpen, setToolsMenuOpen] = useState(false);
+  const [searchOn, setSearchOn] = useState(() => localStorage.getItem('abli_search') !== '0');
   const [billingOpen, setBillingOpen] = useState(false);
   const [mcpModalOpen, setMcpModalOpen] = useState(false);
   const [computerDrawerOpen, setComputerDrawerOpen] = useState(false);
@@ -442,9 +444,18 @@ export function WorkspaceApp({
         return;
       }
 
+      let found: WebResult[] = [];
+      if (searchOn) {
+        const lm: any = nextMessages[nextMessages.length - 1];
+        const qtext = typeof lm?.content === 'string' ? lm.content.trim().slice(0, 250) : '';
+        if (qtext.length > 3) {
+          try { found = (await api.webSearch(qtext)).results || []; } catch { found = []; }
+        }
+      }
+
       const res = await api.chat({
         modelSlug: activeModel.slug,
-        messages: withFileHint(nextMessages.map((m, i) => toApiMessage(m, i === nextMessages.length - 1)), isDesktop),
+        messages: withSearch(withFileHint(nextMessages.map((m, i) => toApiMessage(m, i === nextMessages.length - 1)), isDesktop), found),
         enableTools: isDesktop && enabledServers.length > 0,
         computerControlEnabled: false,
         enabledServers: isDesktop ? enabledServers : [],
@@ -454,7 +465,7 @@ export function WorkspaceApp({
       const assistantMsg: ThreadMessage = {
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: res.content,
+        content: res.content + sourcesMd(found),
         modelName: activeModel.name,
         toolTrace: res.toolTrace || [],
         createdAt: new Date().toISOString()
@@ -1070,6 +1081,15 @@ export function WorkspaceApp({
                       style={{ padding: '6px 9px', display: 'inline-flex', alignItems: 'center', cursor: 'pointer', color: attachments.length ? '#ff6b7d' : '#c4c4d0' }}
                     >
                       <Paperclip size={14} />
+                    </button>
+                    <button
+                      onClick={() => { const v = !searchOn; setSearchOn(v); localStorage.setItem('abli_search', v ? '1' : '0'); }}
+                      className="glass-pill"
+                      title={searchOn ? 'Web search is on' : 'Web search is off'}
+                      style={{ padding: '6px 9px', display: 'inline-flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontSize: 12, color: searchOn ? '#ff6b7d' : '#c4c4d0' }}
+                    >
+                      <Globe size={14} />
+                      <span>{searchOn ? 'Search' : 'Search off'}</span>
                     </button>
                     <button
                       onClick={() => {
