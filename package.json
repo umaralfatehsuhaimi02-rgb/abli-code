@@ -5,7 +5,7 @@
   "type": "module",
   "main": "desktop/main.mjs",
   "license": "MIT",
-  "author": "Umar Al-Fateh Suhaimi <umaralfatehsuhaimi02@gmail.com>",
+  "author": "Abli Code",
   "repository": {
     "type": "git",
     "url": "https://github.com/umaralfatehsuhaimi02-rgb/abli-code"
@@ -72,21 +72,13 @@
       "icon": "public/icon.ico",
       "artifactName": "Abli-Code-${version}-win-${arch}.${ext}"
     },
-    "mac": {
-      "target": "dmg",
-      "icon": "public/icon.png"
-    },
-    "linux": {
-      "icon": "public/icon.png",
-      "category": "Development",
-      "target": "AppImage"
-    },
     "nsis": {
       "artifactName": "Abli-Code-Setup-${version}-${arch}.exe",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "installerIcon": "public/icon.ico",
       "uninstallerIcon": "public/icon.ico"
-    }
+    },
+    "copyright": "Copyright (c) 2026 Abli Code"
   }
 }

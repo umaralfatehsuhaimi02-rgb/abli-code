@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/umaralfatehsuhaimi02-rgb/abli-code/releases/latest"><img alt="Download" src="https://img.shields.io/badge/Download-v1.0.0-ff2547?style=for-the-badge&labelColor=060608"></a>
-  <img alt="Platforms" src="https://img.shields.io/badge/Windows%20%7C%20macOS-x64%20%7C%20x86%20%7C%20arm64-fafafa?style=for-the-badge&labelColor=060608">
+  <img alt="Platforms" src="https://img.shields.io/badge/Windows-x64%20%7C%20x86%20%7C%20arm64-fafafa?style=for-the-badge&labelColor=060608">
   <img alt="License" src="https://img.shields.io/badge/License-MIT-ff2547?style=for-the-badge&labelColor=060608">
 </p>
 
@@ -25,12 +25,9 @@ Grab the latest build from the [Releases page](https://github.com/umaralfatehsuh
 | Windows 64-bit (x64) | `Abli-Code-Setup-1.0.0-x64.exe` | `Abli-Code-1.0.0-win-x64.zip` |
 | Windows 32-bit (x86) | `Abli-Code-Setup-1.0.0-ia32.exe` | `Abli-Code-1.0.0-win-ia32.zip` |
 | Windows on ARM (arm64) | `Abli-Code-Setup-1.0.0-arm64.exe` | `Abli-Code-1.0.0-win-arm64.zip` |
-| macOS Apple Silicon | n/a | `Abli-Code-1.0.0-mac-arm64.zip` |
-| macOS Intel | n/a | `Abli-Code-1.0.0-mac-x64.zip` |
 
 `Abli-Code-Setup-1.0.0.exe` is a single installer that picks x64 or ARM64 for you.
 
-The Mac builds are unsigned. After unzipping, run `xattr -cr "Abli Code.app"` once (and `codesign --force --deep --sign - "Abli Code.app"` on Apple Silicon).
 
 ## What you get
 
@@ -115,7 +112,6 @@ The desktop app never contains provider keys. For production, host the server an
 npx electron-builder --win nsis zip --ia32 -c.electronVersion=43.8.12
 ```
 
-Mac builds cannot be produced on Windows with electron-builder, so the Mac zips are assembled from the official Electron macOS builds with the app inside. A proper signed dmg needs a Mac or a macOS CI runner.
 
 ## License
 

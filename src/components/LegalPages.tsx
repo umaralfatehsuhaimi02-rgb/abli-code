@@ -12,7 +12,7 @@ function buildDocs(email: string): Record<Section, Doc> {
   return {
     terms: {
       title: 'Terms of Service',
-      intro: `These Terms of Service (the "Terms") are an agreement between you and Abli Code, operated by Umar Al-Fateh Suhaimi ("Abli Code", "we", "us"). They apply to the Abli Code website, desktop application, and related services (the "Service"). By creating an account or using the Service you agree to these Terms. If you do not agree, do not use the Service.`,
+      intro: `These Terms of Service (the "Terms") are an agreement between you and Abli Code ("Abli Code", "we", "us"). They apply to the Abli Code website, desktop application, and related services (the "Service"). By creating an account or using the Service you agree to these Terms. If you do not agree, do not use the Service.`,
       blocks: [
         {
           h: '1. What Abli Code is',
@@ -127,7 +127,7 @@ function buildDocs(email: string): Record<Section, Doc> {
 
     privacy: {
       title: 'Privacy Policy',
-      intro: `This Privacy Policy explains what personal data Abli Code, operated by Umar Al-Fateh Suhaimi, collects, how we use it, who we share it with, and the choices you have. For privacy questions, contact ${email}.`,
+      intro: `This Privacy Policy explains what personal data Abli Code, collects, how we use it, who we share it with, and the choices you have. For privacy questions, contact ${email}.`,
       blocks: [
         {
           h: '1. Data we collect',
