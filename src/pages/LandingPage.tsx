@@ -4,6 +4,7 @@ import { CatalogResponse, UserProfile } from '../lib/api';
 import { AbliLogo } from '../components/AbliLogo';
 
 const RELEASES_URL = 'https://github.com/umaralfatehsuhaimi02-rgb/abli-code/releases/latest';
+const REPO_URL = 'https://github.com/umaralfatehsuhaimi02-rgb/abli-code';
 const RED = '#ff2a43';
 const INK = '#060608';
 const PAPER = '#fafafa';
@@ -48,6 +49,11 @@ const CSS = `
 .lp .plan:hover { transform: translateY(-6px); border-color: ${RED}; }
 .lp .plan.feat-plan { background: ${PAPER}; color: ${INK}; border-color: ${PAPER}; }
 .lp .plan.feat-plan:hover { border-color: ${RED}; }
+.lp .side-art { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+.lp .side { position: absolute; top: 0; bottom: 0; width: calc((100vw - 1180px) / 2); overflow: hidden; }
+.lp .side-l { left: 0; } .lp .side-r { right: 0; }
+.lp header, .lp section, .lp footer, .lp .strip { position: relative; z-index: 1; }
+@media (max-width: 1360px) { .lp .side-art { display: none; } }
 .lp .navlink { color: #b3b3c0; font-size: 14px; transition: color .2s ease; }
 .lp .navlink:hover { color: ${PAPER}; }
 .lp .foot-btn { background: none; border: none; color: #d4d4de; cursor: pointer; font-size: 13px; padding: 0; }
@@ -67,6 +73,34 @@ const CSS = `
   .lp .float-a, .lp .float-b, .lp .spin, .lp .spin-r, .lp .strip-track { animation: none; }
 }
 `;
+
+function SideArt() {
+  return (
+    <div className="side-art" aria-hidden="true">
+      <div className="side side-l">
+        <svg viewBox="0 0 240 1000" width="100%" height="100%" preserveAspectRatio="xMaxYMid slice">
+          <line x1="232" y1="0" x2="232" y2="1000" stroke="rgba(255,255,255,0.14)" strokeWidth="1.5" strokeDasharray="3 11" />
+          <g className="spin"><circle cx="150" cy="150" r="50" fill="none" stroke={PAPER} strokeWidth="11" /></g>
+          <g className="float-a"><circle cx="96" cy="400" r="66" fill={RED} /></g>
+          <g className="float-b"><rect x="130" y="560" width="84" height="84" rx="22" fill={PAPER} /></g>
+          <path d="M40 800 A72 72 0 0 1 112 728 L112 800 Z" fill={PAPER} />
+          <rect x="64" y="842" width="120" height="16" rx="8" fill={RED} />
+          <rect x="64" y="872" width="72" height="16" rx="8" fill={PAPER} />
+        </svg>
+      </div>
+      <div className="side side-r">
+        <svg viewBox="0 0 240 1000" width="100%" height="100%" preserveAspectRatio="xMinYMid slice">
+          <line x1="8" y1="0" x2="8" y2="1000" stroke="rgba(255,255,255,0.14)" strokeWidth="1.5" strokeDasharray="3 11" />
+          <g className="float-b"><path d="M40 300 L110 170 L180 300 Z" fill={INK} stroke={PAPER} strokeWidth="4" strokeLinejoin="round" /></g>
+          <g className="float-a"><rect x="60" y="420" width="96" height="96" rx="26" fill={RED} /></g>
+          <g className="spin-r"><circle cx="120" cy="660" r="58" fill="none" stroke={PAPER} strokeWidth="11" /></g>
+          <circle cx="70" cy="820" r="26" fill={PAPER} />
+          <rect x="100" y="880" width="96" height="16" rx="8" fill={RED} />
+        </svg>
+      </div>
+    </div>
+  );
+}
 
 function HeroArt() {
   return (
@@ -178,6 +212,7 @@ export function LandingPage({
 
   return (
     <div className="lp" style={{ minHeight: '100vh', background: INK, color: PAPER, overflowX: 'hidden' }}>
+      <SideArt />
       <style>{CSS}</style>
 
       <header className="wrap" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '22px 28px' }}>
@@ -188,6 +223,7 @@ export function LandingPage({
           <a className="navlink hide-sm" href="#features">Features</a>
           <a className="navlink hide-sm" href="#models">Models</a>
           <a className="navlink hide-sm" href="#pricing">Pricing</a>
+            <a className="navlink" href={REPO_URL} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Github size={15} /> GitHub</a>
           <button className="btn btn-line" onClick={webAction} style={{ padding: '10px 20px', fontSize: 13.5 }}>{user ? 'Open app' : 'Sign in'}</button>
         </nav>
       </header>
@@ -199,11 +235,12 @@ export function LandingPage({
             Built for abliterated models.<br /><span style={{ color: RED }}>All in one app.</span><span className="caret" aria-hidden="true" />
           </h1>
           <p className="reveal in d2" style={{ fontSize: 19, lineHeight: 1.6, color: '#b3b3c0', maxWidth: 500, margin: '0 0 38px' }}>
-            A desktop and web workspace for the latest abliterated models, from several providers.
+            A desktop and web workspace for the latest abliterated models.
           </p>
           <div className="reveal in d3" style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
             <a className="btn btn-red" href={RELEASES_URL} target="_blank" rel="noreferrer"><Download size={18} /> Download for Windows</a>
             <button className="btn btn-line" onClick={webAction}><Globe size={17} /> Use in browser</button>
+            <a className="btn btn-line" href={REPO_URL} target="_blank" rel="noreferrer"><Github size={17} /> GitHub</a>
           </div>
         </div>
         <div className="reveal in d2"><HeroArt /></div>
