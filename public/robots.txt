@@ -1,0 +1,13 @@
+# Abli Code robots.txt
+User-agent: *
+Allow: /
+Allow: /legal/terms
+Allow: /legal/privacy
+Allow: /legal/aup
+Allow: /legal/cookies
+Disallow: /api/
+Disallow: /app/
+Disallow: /admin/
+Disallow: /auth/callback
+
+Sitemap: https://ablicode.dev/sitemap.xml
