@@ -7,7 +7,7 @@ import path from 'node:path';
 import readline from 'node:readline';
 import { exec } from 'node:child_process';
 
-const VERSION = '1.0.3';
+const VERSION = '1.0.4';
 const CONF_DIR = path.join(os.homedir(), '.abli');
 const CONF_FILE = path.join(CONF_DIR, 'config.json');
 const FENCE = '`'.repeat(3);

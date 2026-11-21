@@ -125,7 +125,10 @@ export function WorkspaceApp({
   // Tools & MCP state
   const [mcpServers, setMcpServers] = useState<any[]>([]);
   const [mcpTools, setMcpTools] = useState<any[]>([]);
-  const [enabledServers, setEnabledServers] = useState<string[]>(['stock-rea']);
+  const [enabledServers, setEnabledServers] = useState<string[]>(() => {
+    try { const saved = JSON.parse(localStorage.getItem('abli_servers') || 'null'); if (Array.isArray(saved)) return saved; } catch {}
+    return ['stock-rea'];
+  });
   const [newMcp, setNewMcp] = useState({ name: '', transport: 'stdio', command: 'npx', args: '', url: '' });
   const [mcpBusy, setMcpBusy] = useState(false);
   const [mcpMode, setMcpMode] = useState<'form' | 'json'>('form');
@@ -369,7 +372,11 @@ export function WorkspaceApp({
   const localModels = isDesktop ? LOCAL_CONFIGS : [];
 
   const toggleServer = (id: string) => {
-    setEnabledServers((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    setEnabledServers((prev) => {
+      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+      try { localStorage.setItem('abli_servers', JSON.stringify(next)); } catch {}
+      return next;
+    });
   };
 
   const sendPrompt = async (overrideText?: string, opts?: { baseMessages?: ThreadMessage[]; attachments?: Attachment[] }) => {
@@ -462,7 +469,7 @@ export function WorkspaceApp({
         modelSlug: activeModel.slug,
         messages: withSearch(withFileHint(nextMessages.map((m, i) => toApiMessage(m, i === nextMessages.length - 1)), isDesktop), found),
         enableTools: isDesktop && enabledServers.length > 0,
-        computerControlEnabled: false,
+        computerControlEnabled: isDesktop && enabledServers.includes('stock-computer'),
         enabledServers: isDesktop ? enabledServers : [],
         workspacePath: isDesktop ? activeThread.workspacePath : ''
       }, ctrl.signal);

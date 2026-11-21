@@ -181,10 +181,16 @@ function cmpVer(a, b) {
 let upd = { phase: 'idle', version: '', error: '' };
 let updAsset = null;
 function setUpd(p) { upd = { ...upd, ...p }; try { mainWindow?.webContents.send('update:state', upd); } catch {} }
+let updEtag = '';
+let lastUpdCheck = 0;
 async function checkForUpdate() {
   if (!app.isPackaged || upd.phase === 'downloading' || upd.phase === 'installing') return;
-  const r = await fetch('https://api.github.com/repos/umaralfatehsuhaimi02-rgb/abli-code/releases/latest', { headers: { 'User-Agent': 'abli-code', Accept: 'application/vnd.github+json' } });
+  if (Date.now() - lastUpdCheck < 15000) return;
+  lastUpdCheck = Date.now();
+  const r = await fetch('https://api.github.com/repos/umaralfatehsuhaimi02-rgb/abli-code/releases/latest', { headers: { 'User-Agent': 'abli-code', Accept: 'application/vnd.github+json', ...(updEtag ? { 'If-None-Match': updEtag } : {}) } });
+  if (r.status === 304) return;
   if (!r.ok) return;
+  updEtag = r.headers.get('etag') || '';
   const rel = await r.json();
   const latest = String(rel.tag_name || '').replace(/^v/, '');
   if (!latest || cmpVer(latest, app.getVersion()) <= 0) return;
@@ -213,8 +219,10 @@ async function installUpdate() {
 }
 
 app.whenReady().then(async () => {
-  setTimeout(() => { checkForUpdate().catch(() => {}); }, 20000);
-  setInterval(() => { checkForUpdate().catch(() => {}); }, 30 * 60 * 1000);
+  setTimeout(() => { checkForUpdate().catch(() => {}); }, 4000);
+  // Watch GitHub for new releases: every 3 minutes, and whenever the window gets focus. ETag makes unchanged checks free.
+  setInterval(() => { checkForUpdate().catch(() => {}); }, 3 * 60 * 1000);
+  app.on('browser-window-focus', () => { checkForUpdate().catch(() => {}); });
   if (!BACKEND_URL) await startEmbeddedServer();
 
   handle('window:minimize', () => mainWindow?.minimize());

@@ -699,7 +699,7 @@ export function createAbliServer() {
           model,
           messages: Array.isArray(body.messages) ? sanitizeMessages(body.messages) : [],
           enableTools: body.enableTools !== false && toolsAllowed(req),
-          computerControlEnabled: Boolean(body.computerControlEnabled),
+          computerControlEnabled: toolsAllowed(req) && Boolean(body.computerControlEnabled),
           enabledServers: toolsAllowed(req) && Array.isArray(body.enabledServers) ? body.enabledServers : [],
           workspacePath: toolsAllowed(req) && typeof body.workspacePath === 'string' ? body.workspacePath : ''
         });
