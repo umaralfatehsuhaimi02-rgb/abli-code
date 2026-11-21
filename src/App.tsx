@@ -3,7 +3,6 @@ import { api, CatalogResponse, getToken, setToken, UserProfile } from './lib/api
 import { LandingPage } from './pages/LandingPage';
 import { WorkspaceApp } from './components/WorkspaceApp';
 import { AuthModal } from './components/AuthModal';
-import { OperatorModal } from './components/OperatorModal';
 import { LegalPages } from './components/LegalPages';
 import { CookieBanner } from './components/CookieBanner';
 import { AbliLogo } from './components/AbliLogo';
@@ -28,7 +27,6 @@ export function App() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [sessionChecked, setSessionChecked] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
-  const [operatorOpen, setOperatorOpen] = useState(false);
   const [cookieOpen, setCookieOpen] = useState(false);
 
   const loadCatalog = () => api.getCatalog().then(setCatalog).catch(() => {});
@@ -115,7 +113,6 @@ export function App() {
           user={user}
           onLaunchApp={() => navigate('app')}
           onOpenAuth={() => setAuthOpen(true)}
-          onOpenOperator={() => setOperatorOpen(true)}
           onOpenLegal={(s) => navigate(s)}
           onOpenCookiePrefs={() => setCookieOpen(true)}
         />
@@ -127,7 +124,6 @@ export function App() {
           user={user}
           onUserChange={setUser}
           onOpenAuth={() => setAuthOpen(true)}
-          onOpenOperator={() => setOperatorOpen(true)}
           onBackLanding={() => navigate('landing')}
           onLogout={handleLogout}
         />
@@ -155,7 +151,6 @@ export function App() {
         }}
       />
 
-      <OperatorModal open={operatorOpen} onClose={() => setOperatorOpen(false)} onSaved={() => loadCatalog()} />
 
       <CookieBanner
         forceOpen={cookieOpen}

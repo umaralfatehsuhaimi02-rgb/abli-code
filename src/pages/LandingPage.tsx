@@ -14,6 +14,9 @@ function fmtTokens(n: number) {
 }
 
 const CSS = `
+.caret{display:inline-block;width:0.52em;height:0.86em;margin-left:0.12em;background:#ff2a43;vertical-align:-0.06em;animation:caret-blink 1.05s steps(1) infinite}
+@keyframes caret-blink{50%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.caret{animation:none}}
 .lp * { box-sizing: border-box; }
 .lp a { text-decoration: none; }
 .lp .wrap { max-width: 1180px; margin: 0 auto; padding: 0 28px; }
@@ -143,7 +146,6 @@ export function LandingPage({
   user: UserProfile | null;
   onLaunchApp: () => void;
   onOpenAuth: () => void;
-  onOpenOperator?: () => void;
   onOpenLegal: (s: 'terms' | 'privacy' | 'aup' | 'cookies') => void;
   onOpenCookiePrefs: () => void;
 }) {
@@ -194,7 +196,7 @@ export function LandingPage({
         <div>
           <div className="reveal in" style={{ display: 'inline-block', fontSize: 13, fontWeight: 700, color: RED, border: `1.5px solid ${RED}`, borderRadius: 999, padding: '6px 14px', marginBottom: 26 }}>Desktop and web</div>
           <h1 className="reveal in d1" style={{ fontSize: 'clamp(2.9rem, 6.2vw, 5.6rem)', lineHeight: 0.96, letterSpacing: '-0.05em', fontWeight: 900, margin: '0 0 26px' }}>
-            Built for abliterated models.<br /><span style={{ color: RED }}>All in one app.</span>
+            Built for abliterated models.<br /><span style={{ color: RED }}>All in one app.</span><span className="caret" aria-hidden="true" />
           </h1>
           <p className="reveal in d2" style={{ fontSize: 19, lineHeight: 1.6, color: '#b3b3c0', maxWidth: 500, margin: '0 0 38px' }}>
             A desktop and web workspace for the latest abliterated models, from several providers.

@@ -453,6 +453,9 @@ export function createAbliServer() {
       }
 
       if (pathname === '/api/admin/config' && req.method === 'POST') {
+      return json(res, 410, { error: 'API keys and Stripe keys are set in the .env file on the server only.' });
+    }
+    if (pathname === '/api/admin/config-disabled' && req.method === 'POST') {
         const user = await getUserByToken(getBearer(req));
         const isAllowed = user?.role === 'admin' || req.headers.host?.startsWith('localhost') || req.headers.host?.startsWith('127.0.0.1');
         if (!isAllowed) return json(res, 403, { error: 'Operator access only' });

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowUp, Check, ChevronDown, Cpu, CreditCard, FolderOpen,
-  KeyRound, LogOut, Maximize2, Minimize2, Monitor, Plus, Plug,
+  LogOut, Maximize2, Minimize2, Monitor, Plus, Plug,
   Settings, Sparkles, Trash2, Wrench, X
 } from 'lucide-react';
 import { api, CatalogResponse, ModelConfig, UserProfile } from '../lib/api';
@@ -63,7 +63,6 @@ export function WorkspaceApp({
   user,
   onUserChange,
   onOpenAuth,
-  onOpenOperator,
   onBackLanding,
   onLogout
 }: {
@@ -71,7 +70,6 @@ export function WorkspaceApp({
   user: UserProfile | null;
   onUserChange: (u: UserProfile) => void;
   onOpenAuth: () => void;
-  onOpenOperator: () => void;
   onBackLanding: () => void;
   onLogout: () => void;
 }) {
@@ -405,15 +403,6 @@ export function WorkspaceApp({
           >
             <CreditCard size={13} color="#ff2a43" />
             {user ? `${user.plan.toUpperCase()} / $${user.creditBalanceUsd.toFixed(2)}` : 'Plans'}
-          </button>
-
-          <button
-            onClick={onOpenOperator}
-            className="glass-pill"
-            title="API Keys & Stripe Settings"
-            style={{ padding: '6px 10px', color: '#c4c4d0', display: user?.role === 'admin' ? 'inline-flex' : 'none', alignItems: 'center', gap: 5, cursor: 'pointer', fontSize: 12 }}
-          >
-            <KeyRound size={13} /> Keys
           </button>
 
           {!user && (
