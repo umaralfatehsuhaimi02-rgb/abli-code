@@ -1,10 +1,18 @@
-﻿import http from 'node:http';
+import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = __dirname;
+
+// Pending browser sign-ins started from the desktop app (loginId -> state).
+const desktopLogins = new Map();
+function pruneDesktopLogins() {
+  const now = Date.now();
+  for (const [id, v] of desktopLogins) if (now - v.createdAt > 10 * 60 * 1000) desktopLogins.delete(id);
+}
 
 async function loadDotEnv() {
   try {
@@ -214,6 +222,43 @@ export function createAbliServer() {
         const redirectTo = urlObj.searchParams.get('redirectTo') || undefined;
         const result = await getOAuthAuthorizeUrl(provider, redirectTo);
         return json(res, 200, result);
+      }
+
+      // Desktop sign-in through the default browser
+      if (pathname === '/api/auth/desktop/start' && req.method === 'GET') {
+        pruneDesktopLogins();
+        const provider = urlObj.searchParams.get('provider') === 'google' ? 'google' : 'github';
+        const loginId = crypto.randomBytes(24).toString('hex');
+        desktopLogins.set(loginId, { status: 'pending', createdAt: Date.now() });
+        const origin = `http://${req.headers.host}`;
+        const result = await getOAuthAuthorizeUrl(provider, `${origin}/auth/desktop-callback?login=${loginId}`);
+        return json(res, 200, { url: result.url, loginId });
+      }
+
+      if (pathname === '/auth/desktop-callback' && req.method === 'GET') {
+        return serveStatic(res, path.join(ROOT_DIR, 'public', 'desktop-callback.html'));
+      }
+
+      if (pathname === '/api/auth/desktop/complete' && req.method === 'POST') {
+        const body = await readBody(req);
+        const entry = desktopLogins.get(String(body.loginId || ''));
+        if (!entry || entry.status !== 'pending') {
+          return json(res, 400, { error: 'This sign-in request expired. Start again from the Abli Code app.' });
+        }
+        const result = await exchangeSupabaseAccessToken(body.accessToken);
+        desktopLogins.set(body.loginId, { status: 'done', createdAt: entry.createdAt, result });
+        return json(res, 200, { ok: true });
+      }
+
+      if (pathname === '/api/auth/desktop/status' && req.method === 'GET') {
+        const id = urlObj.searchParams.get('login') || '';
+        const entry = desktopLogins.get(id);
+        if (!entry) return json(res, 200, { status: 'expired' });
+        if (entry.status === 'done') {
+          desktopLogins.delete(id);
+          return json(res, 200, { status: 'done', ...entry.result });
+        }
+        return json(res, 200, { status: 'pending' });
       }
 
       if (pathname === '/api/auth/supabase-exchange' && req.method === 'POST') {

@@ -9,6 +9,10 @@ const INK = '#060608';
 const PAPER = '#fafafa';
 const LINE = 'rgba(255,255,255,0.12)';
 
+function fmtTokens(n: number) {
+  return n >= 1_000_000 ? `${n / 1_000_000}M` : `${Math.round(n / 1000)}K`;
+}
+
 const CSS = `
 .lp * { box-sizing: border-box; }
 .lp a { text-decoration: none; }
@@ -188,12 +192,12 @@ export function LandingPage({
 
       <section className="wrap hero">
         <div>
-          <div className="reveal in" style={{ display: 'inline-block', fontSize: 13, fontWeight: 700, color: RED, border: `1.5px solid ${RED}`, borderRadius: 999, padding: '6px 14px', marginBottom: 26 }}>Open source, MIT licensed</div>
+          <div className="reveal in" style={{ display: 'inline-block', fontSize: 13, fontWeight: 700, color: RED, border: `1.5px solid ${RED}`, borderRadius: 999, padding: '6px 14px', marginBottom: 26 }}>Desktop and web</div>
           <h1 className="reveal in d1" style={{ fontSize: 'clamp(2.9rem, 6.2vw, 5.6rem)', lineHeight: 0.96, letterSpacing: '-0.05em', fontWeight: 900, margin: '0 0 26px' }}>
-            Chat with abliterated models.<br /><span style={{ color: RED }}>One app.</span>
+            Built for abliterated models.<br /><span style={{ color: RED }}>All in one app.</span>
           </h1>
           <p className="reveal in d2" style={{ fontSize: 19, lineHeight: 1.6, color: '#b3b3c0', maxWidth: 500, margin: '0 0 38px' }}>
-            The latest open-weight models with refusals removed, from several providers, in a single desktop and web workspace.
+            A desktop and web workspace for the latest abliterated models, from several providers.
           </p>
           <div className="reveal in d3" style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
             <a className="btn btn-red" href={RELEASES_URL} target="_blank" rel="noreferrer"><Download size={18} /> Download for Windows</a>
@@ -245,7 +249,7 @@ export function LandingPage({
                 <div className="hide-sm" style={{ fontSize: 13.5, color: '#8e8e9c', marginTop: 4 }}>{m.description}</div>
               </div>
               <div style={{ fontSize: 14.5, color: '#c4c4d0' }}>{platformName(m.platform)}</div>
-              <div style={{ fontSize: 14.5, color: '#c4c4d0', textAlign: 'right' }}>${m.inputCostPer1M} in / ${m.outputCostPer1M} out</div>
+              <div style={{ fontSize: 14.5, color: '#c4c4d0', textAlign: 'right' }}>{m.tier === 'free' ? `Free, ${fmtTokens((m as any).dailyFreeTokenLimit)} tokens a day` : <>${m.inputCostPer1M} in / ${m.outputCostPer1M} out</>}</div>
             </div>
           ))}
         </div>
@@ -310,7 +314,7 @@ export function LandingPage({
       <footer className="wrap" style={{ padding: '34px 28px 50px', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 18, fontSize: 13.5, color: '#8e8e9c' }}>
         <span>Abli Code, <a href={`mailto:${catalog.contactEmail}`} style={{ color: '#d4d4de' }}>{catalog.contactEmail}</a></span>
         <span style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'center' }}>
-          <a href="https://github.com/umaralfatehsuhaimi02-rgb/abli-code" target="_blank" rel="noreferrer" style={{ color: '#d4d4de', display: 'inline-flex', gap: 6, alignItems: 'center' }}><Github size={14} /> Source</a>
+          
           <button className="foot-btn" onClick={() => onOpenLegal('terms')}>Terms</button>
           <button className="foot-btn" onClick={() => onOpenLegal('privacy')}>Privacy</button>
           <button className="foot-btn" onClick={() => onOpenLegal('aup')}>Acceptable use</button>

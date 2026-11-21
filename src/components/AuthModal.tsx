@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { CheckCircle2, Github, Mail, Shield, X } from 'lucide-react';
 import { GoogleLogo } from './GoogleLogo';
 import { api, setToken, UserProfile } from '../lib/api';
@@ -15,6 +15,7 @@ export function AuthModal({ open, onClose, onAuthed }: { open: boolean; onClose:
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
   const [info, setInfo] = useState('');
+  const oauthRun = useRef(0);
 
   if (!open) return null;
 
@@ -60,14 +61,39 @@ export function AuthModal({ open, onClose, onAuthed }: { open: boolean; onClose:
 
   const handleOAuth = async (provider: 'github' | 'google') => {
     setErr('');
+    const desktop = (window as any).abliDesktop;
     try {
+      if (desktop?.isDesktop) {
+        // Sign in through the default browser, then pick the session up here.
+        const run = ++oauthRun.current;
+        const { url, loginId } = await api.startDesktopLogin(provider);
+        await desktop.openExternal(url);
+        setInfo(`Finish signing in with ${provider === 'github' ? 'GitHub' : 'Google'} in your browser. This window updates when you are done.`);
+        const started = Date.now();
+        while (Date.now() - started < 5 * 60 * 1000) {
+          await new Promise((r) => setTimeout(r, 1500));
+          if (run !== oauthRun.current) return;
+          const s = await api.pollDesktopLogin(loginId);
+          if (s.status === 'done' && s.token && s.user) {
+            setToken(s.token);
+            setInfo('');
+            onAuthed(s.user);
+            onClose();
+            return;
+          }
+          if (s.status === 'expired') break;
+        }
+        setInfo('');
+        setErr('Sign-in timed out. Try again.');
+        return;
+      }
       const res = await api.getOAuthUrl(provider, `${window.location.origin}/#/app`);
       window.location.href = res.url;
     } catch (e: any) {
+      setInfo('');
       setErr(e.message);
     }
   };
-
   const inputStyle: React.CSSProperties = {
     padding: '11px 14px',
     background: '#08080b',

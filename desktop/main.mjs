@@ -60,6 +60,28 @@ function createWindow() {
     mainWindow?.setTitle('Abli Code');
   });
 
+  // GitHub, Google, and Supabase sign-in always open in the default browser, never in this window.
+  const SIGNIN_HOSTS = [/(^|\.)github\.com$/, /(^|\.)google\.com$/, /\.supabase\.co$/];
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    try {
+      const u = new URL(url);
+      if (/^https?:$/.test(u.protocol) && SIGNIN_HOSTS.some((re) => re.test(u.hostname))) {
+        event.preventDefault();
+        shell.openExternal(url);
+      }
+    } catch {}
+  });
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    try {
+      const u = new URL(url);
+      if (/^https?:$/.test(u.protocol) && SIGNIN_HOSTS.some((re) => re.test(u.hostname))) {
+        shell.openExternal(url);
+        return { action: 'deny' };
+      }
+    } catch {}
+    return { action: 'allow' };
+  });
+
   mainWindow.loadURL(`http://127.0.0.1:${localPort}/?desktop=1#/app`);
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -96,6 +118,7 @@ app.whenReady().then(async () => {
   });
 
   ipcMain.handle('shell:openExternal', async (_ev, url) => {
+    if (!/^https?:\/\//i.test(String(url))) return { ok: false };
     await shell.openExternal(url);
     return { ok: true };
   });

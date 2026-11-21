@@ -109,6 +109,10 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload)
     }),
+  startDesktopLogin: (provider: 'github' | 'google') =>
+    apiFetch<{ url: string; loginId: string }>(`/api/auth/desktop/start?provider=${provider}`),
+  pollDesktopLogin: (loginId: string) =>
+    apiFetch<{ status: 'pending' | 'expired' | 'done'; token?: string; user?: UserProfile }>(`/api/auth/desktop/status?login=${loginId}`),
   getOAuthUrl: (provider: 'github' | 'google', redirectTo: string) =>
     apiFetch<{ url: string }>(`/api/auth/oauth?provider=${provider}&redirectTo=${encodeURIComponent(redirectTo)}`),
   exchangeSupabaseToken: (accessToken: string) =>
