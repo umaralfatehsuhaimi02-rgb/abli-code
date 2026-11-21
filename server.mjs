@@ -110,13 +110,13 @@ const MIME = {
 function isLocalReq(req) {
   const a = req.socket && req.socket.remoteAddress || '';
   const local = a === '127.0.0.1' || a === '::1' || a === '::ffff:127.0.0.1';
-  return local && !req.headers['x-forwarded-for'] && !req.headers['forwarded'];
+  return local && !req.headers['x-forwarded-for'] && !req.headers['forwarded'] && !req.headers['cf-connecting-ip'] && !req.headers['x-real-ip'];
 }
 
 // Tools (MCP, terminal) run on the machine hosting this server, so they are only
 // reachable from the desktop app talking to a local server. The web app never gets them.
 function toolsAllowed(req) {
-  return isLocalReq(req) && req.headers['x-abli-desktop'] === '1';
+  return isLocalReq(req) && (req.headers['x-abli-desktop'] === '1' || /Electron\//.test(String(req.headers['user-agent'] || '')));
 }
 
 function json(res, status, data) {
