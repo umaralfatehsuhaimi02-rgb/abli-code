@@ -482,7 +482,7 @@ export function WorkspaceApp({
   };
 
   const freeModelStats =
-    activeModel?.tier === 'free' && user?.freeUsageByModel?.[activeModel.slug]
+    user?.freeUsageByModel?.[activeModel.slug]
       ? user.freeUsageByModel[activeModel.slug]
       : null;
 
@@ -502,7 +502,7 @@ export function WorkspaceApp({
               if (!user) return null;
               if (freeModelStats) {
                 const lim = (freeModelStats as any).limit;
-                return { label: 'Daily usage limit', value: fmtTok(freeModelStats.used) + ' / ' + fmtTok(lim), percent: Math.min(100, (freeModelStats.used / lim) * 100) };
+                return { label: 'Free tokens today', value: fmtTok(freeModelStats.used) + ' / ' + fmtTok(lim), percent: Math.min(100, (freeModelStats.used / lim) * 100) };
               }
               return {
                 label: user.plan.toUpperCase() + ' Usage',
@@ -786,7 +786,7 @@ export function WorkspaceApp({
                       <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.12em', color: '#ff2a43', padding: '6px 10px' }}>{group.label}</div>
                       {group.items.map((m) => {
                         const selected = m.slug === activeModel?.slug;
-                        const freeInfo = m.tier === 'free' ? user?.freeUsageByModel?.[m.slug] : null;
+                        const freeInfo = user?.freeUsageByModel?.[m.slug] || null;
                         const freeExhausted = freeInfo ? freeInfo.remaining <= 0 : false;
                         return (
                           <button

@@ -105,6 +105,19 @@ async function readBody(req, maxBytes = 4 * 1024 * 1024) {
 }
 
 // Chat messages may carry photos as inline data URLs. Anything else (remote URLs, odd part types) is dropped.
+const chatHits = new Map();
+function chatRateOk(id) {
+  const now = Date.now();
+  const arr = (chatHits.get(id) || []).filter((t) => now - t < 60000);
+  if (arr.length >= 20) {
+    chatHits.set(id, arr);
+    return false;
+  }
+  arr.push(now);
+  chatHits.set(id, arr);
+  return true;
+}
+
 function sanitizeMessages(list) {
   let images = 0;
   return list
@@ -211,12 +224,12 @@ export function createAbliServer() {
           stripeConfigured: Boolean(st.settings.stripeSecretKey),
           plans: Object.values(PLANS).map(sanitizePublicPlan),
           topUpPacks: TOPUP_PACKS,
-          platforms: PLATFORM_PRESETS,
-          models: st.models.map((m) => ({
+          platforms: [],
+          models: st.models.map(({ platform, upstreamModelId, ...m }) => ({
             ...m,
             inputCostPer1M: sellPrices(m).input,
             outputCostPer1M: sellPrices(m).output,
-            providerReady: Boolean(st.providers.find((p) => p.id === m.platform && (p.apiKey || p.id === 'ollama')))
+            providerReady: Boolean(st.providers.find((p) => p.id === platform && (p.apiKey || p.id === 'ollama')))
           })),
           supabase: {
             url: st.settings.supabaseUrl,
@@ -581,6 +594,7 @@ export function createAbliServer() {
       // Chat Completions + Quota Enforcement
       if (pathname === '/api/chat/completions' && req.method === 'POST') {
         const user = await getUserByToken(getBearer(req));
+        if (user && !chatRateOk(user.id)) return json(res, 429, { error: 'You are sending messages too fast. Wait a few seconds and try again.' });
         const body = await readBody(req, 16 * 1024 * 1024);
         const st = await getState();
         const model = st.models.find((m) => m.slug === body.modelSlug) || st.models[0];

@@ -250,8 +250,8 @@ export function LandingPage({
                 <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em' }}>{m.name}</div>
                 <div className="hide-sm" style={{ fontSize: 13.5, color: '#8e8e9c', marginTop: 4 }}>{m.description}</div>
               </div>
-              <div style={{ fontSize: 14.5, color: '#c4c4d0' }}>{platformName(m.platform)}</div>
-              <div style={{ fontSize: 14.5, color: '#c4c4d0', textAlign: 'right' }}>{m.tier === 'free' ? `Free, ${fmtTokens((m as any).dailyFreeTokenLimit)} tokens a day` : <>${m.inputCostPer1M} in / ${m.outputCostPer1M} out</>}</div>
+              <div style={{ fontSize: 14.5, color: '#c4c4d0' }}>{m.tier === 'free' ? 'Free' : (m as any).maxFree ? 'Fast, free on Max' : m.tier === 'cheap' ? 'Fast and cheap' : 'Flagship'}</div>
+              <div style={{ fontSize: 14.5, color: '#c4c4d0', textAlign: 'right' }}>{m.tier === 'free' ? 'Free, shared 5M tokens a day' : <>${m.inputCostPer1M} in / ${m.outputCostPer1M} out</>}</div>
             </div>
           ))}
         </div>

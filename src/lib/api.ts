@@ -31,7 +31,7 @@ export interface ModelConfig {
   tier: 'free' | 'cheap' | 'premium';
   speedBadge?: string;
   vision?: boolean;
-  platform: string;
+  platform?: string;
   upstreamModelId: string;
   dailyFreeTokenLimit: number;
   inputCostPer1M: number;
