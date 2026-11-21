@@ -298,7 +298,7 @@ async function start(id) {
   const md = dirs().model(m.id);
   const args = ['-m', path.join(md, 'model.gguf')];
   if (m.files.some((f) => f.adapter)) args.push('--lora', path.join(md, 'adapter.gguf'));
-  args.push('--host', '127.0.0.1', '--port', String(port), '-c', '8192', '-np', '1', '-ngl', r.onGpu ? '99' : '0', '--api-key', key, '--jinja');
+  args.push('--host', '127.0.0.1', '--port', String(port), '-c', '16384', '-np', '1', '-ngl', r.onGpu ? '99' : '0', '--api-key', key, '--jinja');
   S.log = ''; S.error = '';
   const child = spawn(exe, args, { cwd: path.dirname(exe), windowsHide: true, env: { ...process.env, PATH: `${path.dirname(exe)};${process.env.PATH}` } });
   S.child = child; S.key = key; S.running = { id, port, ready: false };

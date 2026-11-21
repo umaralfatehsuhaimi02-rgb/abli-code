@@ -417,13 +417,14 @@ export function WorkspaceApp({
         const asstId = crypto.randomUUID();
         let acc = '';
         let thinking = false;
+        const trace: any[] = [];
         let raf = 0;
         const flush = () => {
           raf = 0;
           const content = acc || (thinking ? 'Thinking...' : '');
           updateActiveThread((t) => ({
             ...t,
-            messages: [...nextMessages, { id: asstId, role: 'assistant' as const, content, modelName: activeModel.name, toolTrace: [], createdAt: new Date().toISOString() }],
+            messages: [...nextMessages, { id: asstId, role: 'assistant' as const, content, modelName: activeModel.name, toolTrace: [...trace], createdAt: new Date().toISOString() }],
             updatedAt: new Date().toISOString()
           }));
         };
@@ -434,12 +435,16 @@ export function WorkspaceApp({
             id: lid,
             messages: nextMessages.map((m) => toApiMessage(m, false)),
             onDelta: (d) => { acc += d; schedule(); },
+            tools: isDesktop ? mcpTools.filter((t) => enabledServers.includes(t.serverId) && !t.error) : [],
+            workspace: isDesktop ? activeThread.workspacePath : '',
+            runTool: async (t, args) => { const r: any = await api.invokeMcpTool(t.serverId, t.name, args); return r?.output ?? r; },
+            onToolTrace: (tr) => { trace.push(tr); schedule(); },
             onThinking: () => { if (!thinking) { thinking = true; schedule(); } },
             signal: ctrl.signal
           });
         } finally {
           if (raf) cancelAnimationFrame(raf);
-          if (acc) flush();
+          if (acc || trace.length) flush();
         }
         return;
       }
