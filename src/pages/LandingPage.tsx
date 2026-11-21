@@ -321,6 +321,7 @@ export function LandingPage({
           <button className="foot-btn" onClick={() => onOpenLegal('cookies')}>Cookies</button>
           <button className="foot-btn" onClick={onOpenCookiePrefs}>Cookie settings</button>
         </span>
+      <div className="wrap" style={{ padding: '0 28px 40px', fontSize: 12.5, color: '#6f6f7c' }}>Built with Muse Spark Open. Model names belong to their makers.</div>
       </footer>
     </div>
   );

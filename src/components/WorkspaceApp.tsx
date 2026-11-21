@@ -507,7 +507,7 @@ export function WorkspaceApp({
                 <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, padding: 11 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, marginBottom: 6 }}>
                     <span style={{ color: '#9b9ba8' }}>
-                      {freeModelStats ? `${activeModel.name.split(' ')[0]} Free` : `${user.plan.toUpperCase()} Usage`}
+                      {freeModelStats ? 'Daily usage limit' : `${user.plan.toUpperCase()} Usage`}
                     </span>
                     <span style={{ fontWeight: 600, color: '#fff' }}>
                       {freeModelStats

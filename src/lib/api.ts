@@ -83,7 +83,12 @@ export async function apiFetch<T = any>(path: string, init: RequestInit = {}): P
   };
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const res = await fetch(path, { ...init, headers });
+  let res: Response;
+  try {
+    res = await fetch(path, { ...init, headers });
+  } catch {
+    throw new Error('Cannot reach the Abli Code server. Check your connection and try again.');
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const err: any = new Error(data.error || `Request failed (${res.status})`);
