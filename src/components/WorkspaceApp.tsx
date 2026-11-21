@@ -729,7 +729,7 @@ export function WorkspaceApp({
                           {m.attachments && m.attachments.length > 0 && <MessageAttachments items={m.attachments} />}
                         </div>
                       ) : (
-                        <div style={{ width: '100%', display: 'grid', gap: 10 }}>
+                        <div style={{ width: '100%', minWidth: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 10 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#8e8e9c' }}>
                             <ModelShape name={m.modelName || ''} size={12} />
                             <span style={{ fontWeight: 600, color: '#e4e4ec' }}>{m.modelName || 'Abli Code'}</span>
@@ -765,6 +765,8 @@ export function WorkspaceApp({
                               border: '1px solid rgba(255,255,255,0.09)',
                               borderLeft: '3px solid #ff2a43',
                               borderRadius: 18,
+                              minWidth: 0,
+                              maxWidth: '100%',
                               padding: '14px 18px',
                               fontSize: 14,
                               lineHeight: 1.68
