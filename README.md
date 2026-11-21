@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/umaralfatehsuhaimi02-rgb/abli-code-releases/releases/latest"><img alt="Download" src="https://img.shields.io/badge/Download-v1.0.1-ff2547?style=for-the-badge&labelColor=060608"></a>
+  <a href="https://github.com/umaralfatehsuhaimi02-rgb/abli-code/releases/latest"><img alt="Download" src="https://img.shields.io/badge/Download-v1.0.1-ff2547?style=for-the-badge&labelColor=060608"></a>
   <img alt="Platforms" src="https://img.shields.io/badge/Windows-x64%20%7C%20x86%20%7C%20arm64-fafafa?style=for-the-badge&labelColor=060608">
   <img alt="License" src="https://img.shields.io/badge/License-MIT-ff2547?style=for-the-badge&labelColor=060608">
 </p>
@@ -18,7 +18,7 @@
 
 ## Download
 
-Grab the latest build from the [Releases page](https://github.com/umaralfatehsuhaimi02-rgb/abli-code-releases/releases/latest).
+Grab the latest build from the [Releases page](https://github.com/umaralfatehsuhaimi02-rgb/abli-code/releases/latest).
 
 | Platform | Installer (wizard) | Portable zip |
 |---|---|---|

@@ -1302,7 +1302,7 @@ export function WorkspaceApp({
 
       {localOpen && (
         <LocalPanel
-          releasesUrl="https://github.com/umaralfatehsuhaimi02-rgb/abli-code-releases/releases/latest"
+          releasesUrl="https://github.com/umaralfatehsuhaimi02-rgb/abli-code/releases/latest"
           onClose={() => setLocalOpen(false)}
           onUse={(slug) => updateActiveThread((t) => ({ ...t, modelSlug: slug }))}
         />

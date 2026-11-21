@@ -180,7 +180,7 @@ function cmpVer(a, b) {
 // On launch, look at the latest GitHub release. If it is newer, fetch the setup for this PC in the background and offer to install it.
 async function checkForUpdate() {
   if (!app.isPackaged) return;
-  const r = await fetch('https://api.github.com/repos/umaralfatehsuhaimi02-rgb/abli-code-releases/releases/latest', { headers: { 'User-Agent': 'abli-code', Accept: 'application/vnd.github+json' } });
+  const r = await fetch('https://api.github.com/repos/umaralfatehsuhaimi02-rgb/abli-code/releases/latest', { headers: { 'User-Agent': 'abli-code', Accept: 'application/vnd.github+json' } });
   if (!r.ok) return;
   const rel = await r.json();
   const latest = String(rel.tag_name || '').replace(/^v/, '');
