@@ -227,3 +227,5 @@ button, input, select, textarea {
 @keyframes sb-blink{50%{opacity:.15}}
 .sb-icon-btn{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border:none;border-radius:8px;background:transparent;color:#71717e;cursor:pointer;transition:color .12s ease,background .12s ease}
 .sb-icon-btn:hover{color:#ff2a43;background:rgba(255,255,255,.06)}
+
+.sb-act2{right:34px}

@@ -489,6 +489,7 @@ export function WorkspaceApp({
             onNew={(folder) => startThread(folder)}
             onAddProject={addProject}
             onDelete={deleteThread}
+            onRename={(id, title) => setThreads((prev) => prev.map((t) => (t.id === id ? { ...t, title } : t)))}
             onOpenMcp={() => setMcpModalOpen(true)}
             onToggleComputer={() => setComputerDrawerOpen((v) => !v)}
             onOpenBilling={() => { setBillingOpen(true); refreshBillingHistory(); }}
