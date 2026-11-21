@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+﻿import React, { useEffect } from 'react';
 import { ArrowDown, Download, Github, Globe } from 'lucide-react';
 import { CatalogResponse, UserProfile } from '../lib/api';
 import { AbliLogo } from '../components/AbliLogo';
@@ -115,7 +115,7 @@ function AppPreview() {
             Switching to a line reader with a fixed buffer. I will keep the public API the same and update the three call sites that assumed a full string.
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 12.5, padding: '8px 14px', borderRadius: 999, border: `1px solid ${LINE}`, color: '#c4c4d0' }}>Model: GLM 5.3 (Abliterated)</span>
+            <span style={{ fontSize: 12.5, padding: '8px 14px', borderRadius: 999, border: `1px solid ${LINE}`, color: '#c4c4d0' }}>Model: Abli Coder 5.1</span>
             <span style={{ fontSize: 12.5, padding: '8px 14px', borderRadius: 999, border: `1px solid ${LINE}`, color: '#c4c4d0' }}>2 MCP servers on</span>
           </div>
         </div>
@@ -323,7 +323,7 @@ export function LandingPage({
           <button className="foot-btn" onClick={() => onOpenLegal('cookies')}>Cookies</button>
           <button className="foot-btn" onClick={onOpenCookiePrefs}>Cookie settings</button>
         </span>
-      <div className="wrap" style={{ padding: '0 28px 40px', fontSize: 12.5, color: '#6f6f7c' }}>Built with Muse Spark Open. Model names belong to their makers.</div>
+      <div className="wrap" style={{ padding: '0 28px 40px', fontSize: 12.5, color: '#6f6f7c' }}>Built with Muse Spark Open.</div>
       </footer>
     </div>
   );
