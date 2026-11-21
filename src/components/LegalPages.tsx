@@ -1,81 +1,119 @@
 import React from 'react';
-import { ArrowLeft, Mail, ShieldAlert } from 'lucide-react';
+import { ArrowLeft, Mail, ShieldCheck } from 'lucide-react';
 
 export function LegalPages({
   section,
   contactEmail,
-  onBack,
-  onSwitch
+  onBack
 }: {
   section: 'terms' | 'privacy' | 'aup' | 'cookies';
   contactEmail: string;
   onBack: () => void;
-  onSwitch: (s: 'terms' | 'privacy' | 'aup' | 'cookies') => void;
 }) {
-  const tabs: { id: 'terms' | 'privacy' | 'aup' | 'cookies'; label: string }[] = [
-    { id: 'terms', label: 'Terms of Service' },
-    { id: 'privacy', label: 'Privacy Policy' },
-    { id: 'aup', label: 'Acceptable Use (AUP)' },
-    { id: 'cookies', label: 'Cookie Policy' }
-  ];
+  const titles = {
+    terms: 'Terms of Service',
+    privacy: 'Privacy Policy',
+    aup: 'Acceptable Use Policy',
+    cookies: 'Cookie Policy'
+  };
 
   return (
-    <div style={{ maxWidth: 880, margin: '0 auto', padding: '40px 20px 80px' }}>
-      <button className="btn-outline" onClick={onBack} style={{ padding: '8px 14px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 24 }}>
-        <ArrowLeft size={14} /> Back to Abli Code
-      </button>
+    <div style={{ minHeight: '100vh', background: '#060608', color: '#fafafa', padding: '48px 20px' }}>
+      <div style={{ maxWidth: 820, margin: '0 auto' }}>
+        <button onClick={onBack} className="btn-outline" style={{ padding: '8px 16px', display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 24, fontSize: 13 }}>
+          <ArrowLeft size={14} /> Back to Abli Code
+        </button>
 
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 28 }}>
-        {tabs.map((t) => (
-          <button key={t.id} onClick={() => onSwitch(t.id)} style={{
-            padding: '9px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer',
-            background: section === t.id ? '#ff1e38' : '#0b0b0e', color: '#fff', border: '1px solid #27272e'
-          }}>{t.label}</button>
-        ))}
-      </div>
+        <div style={{ background: '#0c0c10', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 24, padding: 34 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#ff2a43', fontSize: 12, fontWeight: 600, marginBottom: 8 }}>
+            <ShieldCheck size={15} /> Legal &amp; Compliance
+          </div>
+          <h1 style={{ fontSize: 32, fontWeight: 800, margin: '0 0 8px', letterSpacing: '-0.025em' }}>{titles[section]}</h1>
+          <p style={{ color: '#8e8e9c', fontSize: 13, margin: '0 0 28px' }}>
+            Effective November 21, 2026 · Operator Contact:{' '}
+            <a href={`mailto:${contactEmail}`} style={{ color: '#ff6b7d', textDecoration: 'underline' }}>{contactEmail}</a>
+          </p>
 
-      <div className="card-bwr" style={{ padding: 32, lineHeight: 1.7, color: '#d4d4d8', fontSize: 14 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#ff1e38', fontWeight: 800, fontSize: 12, marginBottom: 8 }}>
-          <ShieldAlert size={15} /> EFFECTIVE NOVEMBER 21, 2026 · ABLI CODE (MIT OPEN SOURCE + STRIPE BILLING)
-        </div>
+          {section === 'terms' && (
+            <div style={{ display: 'grid', gap: 18, lineHeight: 1.7, color: '#d4d4de', fontSize: 14.5 }}>
+              <section>
+                <h3 style={{ color: '#fff', margin: '0 0 6px' }}>1. Service &amp; Open-Source License</h3>
+                <p style={{ margin: 0 }}>
+                  Abli Code is open-source software released under the MIT License. Hosted access is provided "AS IS" without warranties of merchantability, fitness for a particular purpose, or uninterrupted availability.
+                </p>
+              </section>
+              <section>
+                <h3 style={{ color: '#fff', margin: '0 0 6px' }}>2. Usage Quotas &amp; Subscriptions</h3>
+                <p style={{ margin: 0 }}>
+                  Free models include daily token quotas per model (750,000 tokens/day UTC per free model). Paid plans (Plus at $20/mo, Pro at $50/mo, Max at $100/mo) include monthly usage allowances enforced automatically to prevent overages. Credit top-ups extend usage beyond plan limits.
+                </p>
+              </section>
+              <section>
+                <h3 style={{ color: '#fff', margin: '0 0 6px' }}>3. User Responsibility &amp; Indemnification</h3>
+                <p style={{ margin: 0 }}>
+                  You are solely responsible for prompts, code, connected MCP tools, and actions executed on your machine. You agree to indemnify and hold harmless the Abli Code maintainers from any claims arising from misuse, unlawful automation, or third-party intellectual property disputes.
+                </p>
+              </section>
+              <section>
+                <h3 style={{ color: '#fff', margin: '0 0 6px' }}>4. Limitation of Liability</h3>
+                <p style={{ margin: 0 }}>
+                  To the maximum extent permitted by law, total aggregate liability shall not exceed the fees you paid to Abli Code during the three (3) months preceding the claim.
+                </p>
+              </section>
+            </div>
+          )}
 
-        {section === 'terms' && (
-          <>
-            <h1 style={{ color: '#fff', marginTop: 0 }}>Terms of Service &amp; Liability Disclaimer</h1>
-            <p><strong>1. Service Scope.</strong> Abli Code is MIT-licensed open-source software paired with an optional hosted AI routing gateway, Stripe billing, Supabase auth, Electron desktop IDE, terminal CLI, and Stock REA MCP server.</p>
-            <p><strong>2. Subscriptions, 150% Spend Cap &amp; Stripe Top-Ups.</strong> Paid plans (Plus $20/mo, Pro $50/mo, Max $100/mo) enforce a strict hard spend cap equal to <strong>150% of subscription price</strong> ($30, $75, and $150 respectively). Once metered spend reaches 150%, requests stop automatically until you upgrade or purchase Stripe Credit Top-Ups. Free DeepSeek Abliterated usage hard-stops at <strong>1,500,000 tokens per UTC day</strong>. Digital subscriptions and consumed credits are final and non-refundable except as required by law.</p>
-            <p><strong>3. "AS-IS" AI &amp; Computer Control Disclaimer.</strong> ALL ABLITERATED MODEL OUTPUTS, REVERSE-ENGINEERING REPORTS, GENERATED CODE, AND COMPUTER CONTROL ACTIONS ARE PROVIDED "AS IS" WITHOUT WARRANTY. YOU ARE SOLELY RESPONSIBLE FOR REVIEWING AND AUTHORIZING ANY CODE, BINARY ANALYSIS, OR SHELL ACTION.</p>
-            <p><strong>4. Limitation of Liability &amp; Indemnification.</strong> TO THE MAXIMUM EXTENT PERMITTED BY LAW, ABLI CODE AND ITS MAINTAINER (<a href={`mailto:${contactEmail}`} style={{ color: '#ff1e38' }}>{contactEmail}</a>) SHALL NOT BE LIABLE FOR INDIRECT OR CONSEQUENTIAL DAMAGES. TOTAL LIABILITY IS STRICTLY CAPPED AT FEES PAID IN THE PRECEDING 30 DAYS. YOU INDEMNIFY THE OPERATOR AGAINST CLAIMS ARISING FROM YOUR PROMPTS, AUTOMATION ACTIONS, OR UNLAWFUL USE.</p>
-          </>
-        )}
+          {section === 'privacy' && (
+            <div style={{ display: 'grid', gap: 18, lineHeight: 1.7, color: '#d4d4de', fontSize: 14.5 }}>
+              <section>
+                <h3 style={{ color: '#fff', margin: '0 0 6px' }}>1. Data We Collect</h3>
+                <p style={{ margin: 0 }}>
+                  We store account identity (email, display name, auth provider via Supabase), subscription plan, credit balances, and aggregated token usage counts. Prompts are forwarded directly to your configured AI model providers and are not sold.
+                </p>
+              </section>
+              <section>
+                <h3 style={{ color: '#fff', margin: '0 0 6px' }}>2. Deletion &amp; Data Requests</h3>
+                <p style={{ margin: 0 }}>
+                  Email <a href={`mailto:${contactEmail}`} style={{ color: '#ff6b7d' }}>{contactEmail}</a> to export or permanently delete your account and associated records.
+                </p>
+              </section>
+            </div>
+          )}
 
-        {section === 'privacy' && (
-          <>
-            <h1 style={{ color: '#fff', marginTop: 0 }}>Privacy Policy</h1>
-            <p><strong>Data Collected:</strong> Account email, hashed password or OAuth identifier (Supabase Auth), 6-digit verification records, Stripe checkout/customer IDs, subscription plan, and token usage counters.</p>
-            <p><strong>Local Execution:</strong> Desktop Computer Control and Stock REA MCP inspect files locally on your machine unless you explicitly include snippets in a prompt to a third-party model API platform. We never sell personal data.</p>
-            <p><strong>Deletion &amp; Requests:</strong> Contact <a href={`mailto:${contactEmail}`} style={{ color: '#ff1e38' }}>{contactEmail}</a> anytime.</p>
-          </>
-        )}
+          {section === 'aup' && (
+            <div style={{ display: 'grid', gap: 18, lineHeight: 1.7, color: '#d4d4de', fontSize: 14.5 }}>
+              <section>
+                <h3 style={{ color: '#fff', margin: '0 0 6px' }}>1. Authorized Environments Only</h3>
+                <p style={{ margin: 0 }}>
+                  You may only run Abli Code desktop automation and workspace tools on codebases, files, and systems you own or have explicit written authorization to work on.
+                </p>
+              </section>
+              <section>
+                <h3 style={{ color: '#fff', margin: '0 0 6px' }}>2. Prohibited Conduct</h3>
+                <p style={{ margin: 0 }}>
+                  Using Abli Code for malware distribution, unauthorized network intrusion, credential theft, denial-of-service, or illegal content results in immediate account termination.
+                </p>
+              </section>
+            </div>
+          )}
 
-        {section === 'aup' && (
-          <>
-            <h1 style={{ color: '#fff', marginTop: 0 }}>Acceptable Use Policy (AUP)</h1>
-            <p><strong>Permitted:</strong> Software development, authorized security testing, clean-room interoperability &amp; rebuild research via Stock REA MCP, and open-source engineering.</p>
-            <p><strong>Prohibited:</strong> CSAM, non-consensual imagery, self-harm facilitation, unauthorized intrusion, malware distribution, credential theft, or quota bypass. Violations result in immediate termination. Report abuse or DMCA claims to <a href={`mailto:${contactEmail}`} style={{ color: '#ff1e38' }}>{contactEmail}</a>.</p>
-          </>
-        )}
+          {section === 'cookies' && (
+            <div style={{ display: 'grid', gap: 18, lineHeight: 1.7, color: '#d4d4de', fontSize: 14.5 }}>
+              <section>
+                <h3 style={{ color: '#fff', margin: '0 0 6px' }}>1. Essential &amp; Preference Storage</h3>
+                <p style={{ margin: 0 }}>
+                  Abli Code uses strictly necessary cookies and localStorage entries to keep you signed in, remember your cookie consent choice, and save active thread preferences.
+                </p>
+              </section>
+            </div>
+          )}
 
-        {section === 'cookies' && (
-          <>
-            <h1 style={{ color: '#fff', marginTop: 0 }}>Cookie Policy</h1>
-            <p>Strictly necessary cookies (`abli_cookie_consent` and auth session tokens) preserve login, Stripe checkout verification, and quota state. Optional analytics/preferences require consent via Cookie Controls.</p>
-          </>
-        )}
-
-        <div style={{ marginTop: 28, paddingTop: 18, borderTop: '1px solid #232329', display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
-          <Mail size={16} color="#ff1e38" />
-          <span>Legal, DMCA &amp; Support Contact: <a href={`mailto:${contactEmail}`} style={{ color: '#fff', fontWeight: 700, textDecoration: 'underline' }}>{contactEmail}</a></span>
+          <div style={{ marginTop: 28, paddingTop: 18, borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+            <span style={{ fontSize: 13, color: '#8e8e9c' }}>Questions or legal notices?</span>
+            <a href={`mailto:${contactEmail}`} className="btn-red" style={{ padding: '9px 18px', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+              <Mail size={14} /> Contact {contactEmail}
+            </a>
+          </div>
         </div>
       </div>
     </div>

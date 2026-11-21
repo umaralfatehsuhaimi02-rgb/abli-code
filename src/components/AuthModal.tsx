@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { CheckCircle2, Github, Mail, Shield, X } from 'lucide-react';
 import { api, setToken, UserProfile } from '../lib/api';
+import { AbliLogo } from './AbliLogo';
 
 export function AuthModal({ open, onClose, onAuthed }: { open: boolean; onClose: () => void; onAuthed: (u: UserProfile) => void }) {
   const [mode, setMode] = useState<'login' | 'signup'>('signup');
@@ -17,13 +18,16 @@ export function AuthModal({ open, onClose, onAuthed }: { open: boolean; onClose:
   if (!open) return null;
 
   const handleSendCode = async () => {
-    setErr(''); setInfo(''); setLoading(true);
+    setErr('');
+    setInfo('');
+    setLoading(true);
     try {
-      const res = await api.sendCode(email, 'signup');
+      const res: any = await api.sendCode(email, 'signup');
       setCodeSent(true);
-      if (res.previewCode) {
-        setPreviewCode(res.previewCode);
-        setInfo(`6-digit verification code generated (Preview: ${res.previewCode}). Add a Resend API key in Operator Setup for live inbox delivery.`);
+      const devCode = res.devPreviewCode || res.previewCode;
+      if (devCode) {
+        setPreviewCode(devCode);
+        setInfo(`Verification code generated (${devCode}). Add a Resend key in API Keys for live inbox delivery.`);
       } else {
         setInfo('6-digit verification code sent to your email.');
       }
@@ -36,11 +40,13 @@ export function AuthModal({ open, onClose, onAuthed }: { open: boolean; onClose:
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErr(''); setLoading(true);
+    setErr('');
+    setLoading(true);
     try {
-      const res = mode === 'signup'
-        ? await api.register({ email, password, name, code })
-        : await api.login({ email, password });
+      const res =
+        mode === 'signup'
+          ? await api.register({ email, password, name, code })
+          : await api.login({ email, password });
       setToken(res.token);
       onAuthed(res.user);
       onClose();
@@ -54,67 +60,83 @@ export function AuthModal({ open, onClose, onAuthed }: { open: boolean; onClose:
   const handleOAuth = async (provider: 'github' | 'google') => {
     setErr('');
     try {
-      const res = await api.getOAuthUrl(provider);
+      const res = await api.getOAuthUrl(provider, `${window.location.origin}/#/app`);
       window.location.href = res.url;
     } catch (e: any) {
       setErr(e.message);
     }
   };
 
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 90, background: 'rgba(0,0,0,0.82)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div style={{ width: '100%', maxWidth: 440, background: '#0b0b0e', border: '1px solid #26262d', padding: 28, position: 'relative' }}>
-        <button onClick={onClose} style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', color: '#a1a1aa', cursor: 'pointer' }}><X size={18} /></button>
+  const inputStyle: React.CSSProperties = {
+    padding: '11px 14px',
+    background: '#08080b',
+    border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: 12,
+    color: '#fff',
+    fontSize: 13.5,
+    outline: 'none'
+  };
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-          <span style={{ width: 10, height: 10, background: '#ff1e38', display: 'inline-block' }} />
-          <span className="mono" style={{ fontSize: 12, color: '#ff1e38', fontWeight: 700 }}>SUPABASE AUTH + 6-DIGIT CODE</span>
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 90, background: 'rgba(0,0,0,0.78)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div className="pop-in" style={{ width: '100%', maxWidth: 440, background: '#0e0e13', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 24, padding: 28, position: 'relative', boxShadow: '0 24px 70px rgba(0,0,0,0.65)' }}>
+        <button onClick={onClose} style={{ position: 'absolute', top: 18, right: 18, background: 'none', border: 'none', color: '#8e8e9c', cursor: 'pointer' }}><X size={18} /></button>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+          <AbliLogo size={26} />
+          <span style={{ fontSize: 13, fontWeight: 600, color: '#9b9ba8' }}>Abli Code Account</span>
         </div>
-        <h2 style={{ margin: '0 0 18px', fontSize: 22, fontWeight: 900 }}>{mode === 'signup' ? 'Create Abli Code Account' : 'Sign In to Abli Code'}</h2>
+        <h2 style={{ margin: '0 0 18px', fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em' }}>
+          {mode === 'signup' ? 'Create your account' : 'Welcome back'}
+        </h2>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
-          <button className="btn-outline" style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 13 }} onClick={() => handleOAuth('github')}>
-            <Github size={16} /> GitHub OAuth
+          <button className="btn-outline" style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 13, borderRadius: 12 }} onClick={() => handleOAuth('github')}>
+            <Github size={15} /> GitHub
           </button>
-          <button className="btn-outline" style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 13 }} onClick={() => handleOAuth('google')}>
-            <Shield size={16} color="#ff1e38" /> Google OAuth
+          <button className="btn-outline" style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 13, borderRadius: 12 }} onClick={() => handleOAuth('google')}>
+            <Shield size={15} color="#ff2a43" /> Google
           </button>
         </div>
 
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-          <button onClick={() => { setMode('signup'); setErr(''); }} style={{ flex: 1, padding: '8px', background: mode === 'signup' ? '#ff1e38' : '#121217', color: '#fff', border: '1px solid #26262d', fontWeight: 700, cursor: 'pointer', fontSize: 12 }}>REGISTER (6-DIGIT CODE)</button>
-          <button onClick={() => { setMode('login'); setErr(''); }} style={{ flex: 1, padding: '8px', background: mode === 'login' ? '#ff1e38' : '#121217', color: '#fff', border: '1px solid #26262d', fontWeight: 700, cursor: 'pointer', fontSize: 12 }}>PASSWORD LOGIN</button>
+        <div style={{ display: 'flex', gap: 6, marginBottom: 16, background: '#08080b', padding: 4, borderRadius: 14, border: '1px solid rgba(255,255,255,0.07)' }}>
+          <button onClick={() => { setMode('signup'); setErr(''); }} style={{ flex: 1, padding: '8px', borderRadius: 10, background: mode === 'signup' ? '#ff2a43' : 'transparent', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer', fontSize: 12.5 }}>
+            Sign up
+          </button>
+          <button onClick={() => { setMode('login'); setErr(''); }} style={{ flex: 1, padding: '8px', borderRadius: 10, background: mode === 'login' ? '#ff2a43' : 'transparent', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer', fontSize: 12.5 }}>
+            Sign in
+          </button>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 12 }}>
+        <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 11 }}>
           {mode === 'signup' && (
-            <input placeholder="Full Name" value={name} onChange={(e) => setName(e.target.value)} required style={{ padding: '10px 12px', background: '#050505', border: '1px solid #27272e', color: '#fff' }} />
+            <input placeholder="Full name" value={name} onChange={(e) => setName(e.target.value)} required style={inputStyle} />
           )}
           <div style={{ display: 'flex', gap: 8 }}>
-            <input type="email" placeholder="you@domain.com" value={email} onChange={(e) => setEmail(e.target.value)} required style={{ flex: 1, padding: '10px 12px', background: '#050505', border: '1px solid #27272e', color: '#fff' }} />
+            <input type="email" placeholder="you@domain.com" value={email} onChange={(e) => setEmail(e.target.value)} required style={{ ...inputStyle, flex: 1 }} />
             {mode === 'signup' && (
-              <button type="button" className="btn-outline" disabled={loading || !email.includes('@')} onClick={handleSendCode} style={{ padding: '0 12px', fontSize: 12, whiteSpace: 'nowrap' }}>
-                <Mail size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />{codeSent ? 'Resend' : 'Send Code'}
+              <button type="button" className="btn-outline" disabled={loading || !email.includes('@')} onClick={handleSendCode} style={{ padding: '0 14px', fontSize: 12.5, whiteSpace: 'nowrap', borderRadius: 12 }}>
+                <Mail size={13} style={{ verticalAlign: 'middle', marginRight: 5 }} />{codeSent ? 'Resend' : 'Send code'}
               </button>
             )}
           </div>
           {mode === 'signup' && (
             <div style={{ display: 'grid', gap: 6 }}>
-              <input placeholder="6-Digit Verification Code" value={code} onChange={(e) => setCode(e.target.value)} maxLength={6} required className="mono" style={{ padding: '10px 12px', background: '#050505', border: '1px solid #ff1e38', color: '#fff', letterSpacing: '0.25em', fontWeight: 700 }} />
+              <input placeholder="6-digit verification code" value={code} onChange={(e) => setCode(e.target.value)} maxLength={6} required className="mono" style={{ ...inputStyle, borderColor: 'rgba(255,42,67,0.45)', letterSpacing: '0.22em', fontWeight: 600 }} />
               {previewCode && (
-                <button type="button" onClick={() => setCode(previewCode)} style={{ background: '#141418', border: '1px dashed #ff1e38', color: '#fff', padding: '6px 10px', fontSize: 11, cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <CheckCircle2 size={13} color="#ff1e38" /> Autofill verification code: <strong className="mono">{previewCode}</strong>
+                <button type="button" onClick={() => setCode(previewCode)} style={{ background: 'rgba(255,42,67,0.08)', border: '1px dashed rgba(255,42,67,0.4)', borderRadius: 10, color: '#fff', padding: '7px 11px', fontSize: 12, cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <CheckCircle2 size={13} color="#ff2a43" /> Use code: <strong className="mono">{previewCode}</strong>
                 </button>
               )}
             </div>
           )}
-          <input type="password" placeholder="Password (min 6 chars)" value={password} onChange={(e) => setPassword(e.target.value)} required style={{ padding: '10px 12px', background: '#050505', border: '1px solid #27272e', color: '#fff' }} />
+          <input type="password" placeholder="Password (min 6 chars)" value={password} onChange={(e) => setPassword(e.target.value)} required style={inputStyle} />
 
-          {info && <div style={{ fontSize: 12, color: '#e4e4e7', background: '#141418', padding: 10, borderLeft: '3px solid #ff1e38' }}>{info}</div>}
-          {err && <div style={{ fontSize: 12, color: '#ff4d61', background: '#1d0b0e', padding: 10, border: '1px solid #ff1e38' }}>{err}</div>}
+          {info && <div style={{ fontSize: 12, color: '#e4e4ec', background: 'rgba(255,255,255,0.05)', padding: 10, borderRadius: 10 }}>{info}</div>}
+          {err && <div style={{ fontSize: 12, color: '#ff8a97', background: 'rgba(255,42,67,0.12)', padding: 10, borderRadius: 10, border: '1px solid rgba(255,42,67,0.35)' }}>{err}</div>}
 
-          <button type="submit" className="btn-red" disabled={loading} style={{ padding: '12px', fontSize: 14 }}>
-            {loading ? 'Processing...' : mode === 'signup' ? 'Verify Code & Create Account' : 'Sign In'}
+          <button type="submit" className="btn-red" disabled={loading} style={{ padding: '12px', fontSize: 14, marginTop: 4 }}>
+            {loading ? 'Working...' : mode === 'signup' ? 'Verify & Create Account' : 'Sign In'}
           </button>
         </form>
       </div>

@@ -1,22 +1,15 @@
 # Abli Code
 
-**Open-source (MIT) Abliterated AI IDE, Terminal CLI, Supabase + Stripe SaaS Gateway, and Stock REA (Reverse Engineer Anything) MCP Server.**
+**Open-source (MIT) AI Coding Desktop App, Web Workspace, Supabase + Stripe Gateway, Computer Control & MCP Hub.**
 
-Built with a **Black / White / Red** aesthetic. Zero-code launch: open **Operator Setup**, paste your platform API keys (OpenRouter, Chutes, DeepInfra, Together, Fireworks, Hugging Face, Ollama/vLLM, or custom OpenAI-compatible) + Stripe + Resend keys, and go live.
+Built with a smooth **Black / White / Red** aesthetic. Plug in your API keys (OpenRouter, Chutes, DeepInfra, Together, Fireworks, Hugging Face, Ollama/vLLM, or custom OpenAI-compatible) + Stripe + Resend in **API Keys** and launch immediately.
 
-## Features
-- **Abliterated Model Router**: Pre-configured for **DeepSeek Abliterated** (Free up to **1,500,000 tokens/day** UTC hard stop), **GLM 5.3 Flash Abliterated**, **GLM 5.3 Abliterated**, **Qwen Abliterated**, and **Kimi Abliterated**.
-- **Subscriptions & 150% Spend Cap + Stripe Top-Ups**:
-  - **Free** ($0): DeepSeek Abliterated up to 1.5M tokens/day.
-  - **Plus** ($20/mo): Hard spend cap at **$30.00 (150%)**.
-  - **Pro** ($50/mo): Hard spend cap at **$75.00 (150%)**.
-  - **Max** ($100/mo): Hard spend cap at **$150.00 (150%)** before hard stop & upgrade/top-up prompt.
-  - **Credit Top-Ups**: +$10, +$25, +$50, +$100 via Stripe Checkout.
-- **Supabase Auth + Custom 6-Digit Verification Codes**: GitHub & Google OAuth plus regular email/password signup verified with a custom 6-digit email code.
-- **Desktop App + Computer Control**: Electron desktop IDE (`npm run desktop`) with native shell execution, file read/write, window enumeration, screen capture, mouse & keyboard control.
-- **Abli Code Terminal (`abli`)**: Interactive CLI & REPL (`node bin/abli.mjs`) with `/rea`, `/mcp`, `/run`, `/models`, and `/usage`.
-- **Stock REA MCP Server + External MCP Hub**: Built-in stdio (`node mcp/rea-server.mjs`) and Streamable HTTP (`/mcp`) Reverse Engineer Anything MCP server (PE/ELF/WASM inspection, Shannon entropy, strings/URL/IPC extraction, disassembly, codebase mapping, and clean-room rebuild blueprints), plus mount any external stdio/HTTP MCP server.
-- **Compliance & SEO**: Terms of Service, Privacy Policy, Acceptable Use Policy, Cookie Policy + Consent Banner, `robots.txt`, `sitemap.xml`, and contact wired to `umaralfatehsuhaimi02@gmail.com`.
+## Highlights
+- **Multi-Model Switcher**: Switch mid-thread between **Free** models (750K tokens/day per model: DeepSeek V3, GLM 4.5 Flash Free, Qwen3 Coder Free, Llama 3.3 70B Free), **Cheap & Fast** models (GLM 5.3 Flash, Qwen3 Coder 30B, DeepSeek R1 Distill, Gemma 3 27B), and **Flagship** models (GLM 5.3, Qwen3 Max, Kimi K2).
+- **Codex-Style Desktop App**: Clean Electron desktop app (`npm run desktop`) with custom app icon, thread sidebar, project folder picker, inline tool trace cards, and composer popovers for model switching & MCP tools.
+- **MCP Support + Computer Control**: Built-in workspace/binary analysis MCP server (`/mcp`) and Computer Control tools (shell, files, windows, screen capture), plus add any custom stdio or HTTP MCP server.
+- **Supabase Auth + Stripe Billing**: GitHub & Google OAuth, regular email/password login with custom 6-digit verification codes, Free/Plus/Pro/Max plans, and Stripe Checkout credit top-ups.
+- **Compliance & SEO**: Terms, Privacy, Acceptable Use, Cookie Policy + Consent Banner, `robots.txt`, `sitemap.xml`, and support via `umaralfatehsuhaimi02@gmail.com`.
 
 ## Quickstart
 ```bash
@@ -24,7 +17,6 @@ npm install
 npm run build
 npm start        # Launches landing page + API + HTTP MCP on http://127.0.0.1:4747
 npm run desktop  # Launches the Electron Desktop App
-node bin/abli.mjs # Launches Abli Code Terminal
 ```
 
 ## License

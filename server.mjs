@@ -106,6 +106,17 @@ function maskKey(k = '') {
   return `${k.slice(0, 4)}••••${k.slice(-4)}`;
 }
 
+function sanitizePublicPlan(plan) {
+  return {
+    id: plan.id,
+    name: plan.name,
+    priceUsd: plan.priceUsd,
+    badge: plan.badge,
+    tagline: plan.tagline,
+    features: plan.features
+  };
+}
+
 async function serveStatic(res, filePath) {
   const ext = path.extname(filePath).toLowerCase();
   const content = await fs.readFile(filePath);
@@ -128,15 +139,21 @@ export function createAbliServer() {
       const urlObj = new URL(req.url || '/', `http://${req.headers.host || 'localhost:4747'}`);
       const pathname = urlObj.pathname;
 
-      // SEO, Crawlers & Favicon
+      // SEO, Crawlers & Icons
       if (pathname === '/robots.txt') {
         return serveStatic(res, path.join(ROOT_DIR, 'public', 'robots.txt'));
       }
       if (pathname === '/sitemap.xml') {
         return serveStatic(res, path.join(ROOT_DIR, 'public', 'sitemap.xml'));
       }
-      if (pathname === '/favicon.svg' || pathname === '/favicon.ico') {
+      if (pathname === '/favicon.svg') {
         return serveStatic(res, path.join(ROOT_DIR, 'public', 'favicon.svg'));
+      }
+      if (pathname === '/favicon.ico' || pathname === '/icon.ico') {
+        return serveStatic(res, path.join(ROOT_DIR, 'public', 'icon.ico'));
+      }
+      if (pathname === '/icon.png') {
+        return serveStatic(res, path.join(ROOT_DIR, 'public', 'icon.png'));
       }
 
       // Health & Public Catalog
@@ -159,7 +176,7 @@ export function createAbliServer() {
           contactEmail: st.settings.contactEmail,
           dailyFreeTokenLimit: DAILY_FREE_TOKEN_LIMIT,
           stripeConfigured: Boolean(st.settings.stripeSecretKey),
-          plans: Object.values(PLANS),
+          plans: Object.values(PLANS).map(sanitizePublicPlan),
           topUpPacks: TOPUP_PACKS,
           platforms: PLATFORM_PRESETS,
           models: st.models.map((m) => ({
@@ -219,7 +236,7 @@ export function createAbliServer() {
         return json(res, 200, { ok: true });
       }
 
-      // Stripe Subscriptions (150% Cap) + Credit Top-Ups
+      // Stripe Subscriptions + Credit Top-Ups
       if (pathname === '/api/billing/subscribe' && req.method === 'POST') {
         const user = await getUserByToken(getBearer(req));
         if (!user) return json(res, 401, { error: 'Sign in required' });
@@ -234,7 +251,7 @@ export function createAbliServer() {
             mode: 'subscription',
             amountUsd: plan.priceUsd,
             customerEmail: user.email,
-            productName: `Abli Code ${plan.name} (150% Spend Cap = $${plan.spendCapUsd})`,
+            productName: `Abli Code ${plan.name} Plan`,
             metadata: { kind: 'subscription', userId: user.id, planId: plan.id },
             successUrl: `${st.settings.appUrl}/#/app?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
             cancelUrl: `${st.settings.appUrl}/#pricing`
@@ -260,7 +277,7 @@ export function createAbliServer() {
             mode: 'payment',
             amountUsd: amt,
             customerEmail: user.email,
-            productName: `Abli Code Credit Top-Up (+$${amt.toFixed(2)})`,
+            productName: `Abli Code Credits (+$${amt.toFixed(2)})`,
             metadata: { kind: 'topup', userId: user.id, amountUsd: String(amt) },
             successUrl: `${st.settings.appUrl}/#/app?topup=success&session_id={CHECKOUT_SESSION_ID}`,
             cancelUrl: `${st.settings.appUrl}/#/app`
@@ -350,12 +367,15 @@ export function createAbliServer() {
         if (!user) return json(res, 401, { error: 'Sign in required' });
         const st = await getState();
         return json(res, 200, {
-          transactions: st.transactions.filter((t) => t.userId === user.id).slice(0, 50),
+          transactions: st.transactions
+            .filter((t) => t.userId === user.id)
+            .slice(0, 50)
+            .map(({ spendCapGrantedUsd, ...rest }) => rest),
           usage: st.usageLedger.filter((u) => u.userId === user.id).slice(0, 50)
         });
       }
 
-      // Operator Launchpad (Admin API keys, platforms & Stripe)
+      // Operator Setup (API keys, platforms & Stripe)
       if (pathname === '/api/admin/config' && req.method === 'GET') {
         const user = await getUserByToken(getBearer(req));
         const st = await getState();
@@ -429,7 +449,7 @@ export function createAbliServer() {
         }
 
         await saveState();
-        return json(res, 200, { ok: true, message: 'Operator configuration saved and live.' });
+        return json(res, 200, { ok: true, message: 'Settings saved and live.' });
       }
 
       if (pathname === '/api/admin/test-provider' && req.method === 'POST') {
@@ -469,7 +489,9 @@ export function createAbliServer() {
           model,
           messages: Array.isArray(body.messages) ? body.messages : [],
           enableTools: body.enableTools !== false,
-          computerControlEnabled: Boolean(body.computerControlEnabled)
+          computerControlEnabled: Boolean(body.computerControlEnabled),
+          enabledServers: Array.isArray(body.enabledServers) ? body.enabledServers : null,
+          workspacePath: typeof body.workspacePath === 'string' ? body.workspacePath : ''
         });
 
         const updatedUser = await recordUsage(
@@ -486,7 +508,7 @@ export function createAbliServer() {
         });
       }
 
-      // MCP Hub APIs (Stock REA + Computer + External Servers)
+      // MCP Hub APIs
       if (pathname === '/api/mcp/servers' && req.method === 'GET') {
         const servers = await loadMcpServers();
         return json(res, 200, { servers });
@@ -544,7 +566,7 @@ export function createAbliServer() {
         return json(res, 200, { jsonrpc: '2.0', id, error: { code: -32601, message: 'Method not found' } });
       }
 
-      // Integrated Terminal Shell Execution
+      // Computer Command Execution (used by Computer Control panel)
       if (pathname === '/api/terminal/exec' && req.method === 'POST') {
         const body = await readBody(req);
         const result = await executeComputerTool('computer_run_shell', {
@@ -584,7 +606,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToP
   const port = Number(process.env.PORT || 4747);
   const server = createAbliServer();
   server.listen(port, '127.0.0.1', () => {
-    console.log(`\n  ABLI CODE gateway & landing page live -> http://127.0.0.1:${port}`);
-    console.log(`  Stock REA HTTP MCP endpoint          -> http://127.0.0.1:${port}/mcp\n`);
+    console.log(`\n  Abli Code gateway & landing page live -> http://127.0.0.1:${port}`);
+    console.log(`  MCP endpoint                         -> http://127.0.0.1:${port}/mcp\n`);
   });
 }

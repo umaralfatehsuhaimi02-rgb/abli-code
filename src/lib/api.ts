@@ -1,4 +1,10 @@
-﻿export interface UserProfile {
+export interface FreeModelQuota {
+  used: number;
+  limit: number;
+  remaining: number;
+}
+
+export interface UserProfile {
   id: string;
   email: string;
   name: string;
@@ -7,20 +13,23 @@
   authProvider: string;
   plan: 'free' | 'plus' | 'pro' | 'max';
   subscriptionPriceUsd: number;
-  spendCapUsd: number;
-  currentCycleSpendUsd: number;
-  remainingCapUsd: number;
+  planUsagePercent: number;
+  planLimitReached: boolean;
   creditBalanceUsd: number;
+  freeUsageByModel: Record<string, FreeModelQuota>;
   freeUsedToday: number;
   freeLimitDaily: number;
   freeRemainingToday: number;
+  todayUtc: string;
+  createdAt: string;
 }
 
-export interface ModelItem {
+export interface ModelConfig {
   slug: string;
   name: string;
   family: string;
-  tier: 'free' | 'premium';
+  tier: 'free' | 'cheap' | 'premium';
+  speedBadge?: string;
   platform: string;
   upstreamModelId: string;
   dailyFreeTokenLimit: number;
@@ -31,87 +40,62 @@ export interface ModelItem {
   providerReady?: boolean;
 }
 
-export interface PlanItem {
-  id: 'free' | 'plus' | 'pro' | 'max';
+export interface PlanConfig {
+  id: string;
   name: string;
   priceUsd: number;
-  capMultiplier: number;
-  spendCapUsd: number;
   badge: string;
   tagline: string;
   features: string[];
-}
-
-export interface TopUpPack {
-  id: string;
-  label: string;
-  amountUsd: number;
-  creditsUsd: number;
 }
 
 export interface CatalogResponse {
   appName: string;
   contactEmail: string;
   dailyFreeTokenLimit: number;
-  plans: PlanItem[];
-  topUpPacks: TopUpPack[];
+  stripeConfigured: boolean;
+  plans: PlanConfig[];
+  topUpPacks: { id: string; label: string; amountUsd: number; creditsUsd: number }[];
   platforms: { id: string; name: string; baseUrl: string }[];
-  models: ModelItem[];
+  models: ModelConfig[];
   supabase: { url: string; publishableKey: string };
 }
 
-declare global {
-  interface Window {
-    abliDesktop?: {
-      isDesktop: boolean;
-      platform: string;
-      minimize: () => Promise<void>;
-      maximize: () => Promise<void>;
-      close: () => Promise<void>;
-      pickFolder: () => Promise<string | null>;
-      pickFile: () => Promise<string | null>;
-      runComputerTool: (toolName: string, args: Record<string, unknown>) => Promise<any>;
-      runReaTool: (toolName: string, args: Record<string, unknown>) => Promise<any>;
-      openExternal: (url: string) => Promise<void>;
-    };
-  }
-}
+const TOKEN_KEY = 'abli_token';
 
-const TOKEN_KEY = 'abli_session_token';
-
-export function getToken(): string {
+export function getToken() {
   return localStorage.getItem(TOKEN_KEY) || '';
 }
 
-export function setToken(t: string) {
-  if (t) localStorage.setItem(TOKEN_KEY, t);
+export function setToken(token: string) {
+  if (token) localStorage.setItem(TOKEN_KEY, token);
   else localStorage.removeItem(TOKEN_KEY);
 }
 
-async function apiFetch<T = any>(url: string, opts: RequestInit = {}): Promise<T> {
+export async function apiFetch<T = any>(path: string, init: RequestInit = {}): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...(opts.headers as Record<string, string> || {})
+    ...(init.headers as Record<string, string> | undefined)
   };
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const res = await fetch(url, { ...opts, headers });
+  const res = await fetch(path, { ...init, headers });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const err = new Error(data.error || `HTTP ${res.status}`) as Error & { code?: string; status?: number };
-    err.code = data.code;
+    const err: any = new Error(data.error || `Request failed (${res.status})`);
     err.status = res.status;
+    err.code = data.code;
     throw err;
   }
-  return data as T;
+  return data;
 }
 
 export const api = {
   getCatalog: () => apiFetch<CatalogResponse>('/api/public/catalog'),
   getMe: () => apiFetch<{ user: UserProfile }>('/api/auth/me'),
   sendCode: (email: string, purpose = 'signup') =>
-    apiFetch<{ ok: boolean; delivered: boolean; previewCode?: string; note?: string }>('/api/auth/send-code', {
+    apiFetch<{ ok: boolean; sentVia: string; message: string; devPreviewCode?: string }>('/api/auth/send-code', {
       method: 'POST',
       body: JSON.stringify({ email, purpose })
     }),
@@ -125,10 +109,8 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload)
     }),
-  getOAuthUrl: (provider: 'github' | 'google') =>
-    apiFetch<{ url: string; provider: string }>(
-      `/api/auth/oauth?provider=${provider}&redirectTo=${encodeURIComponent(window.location.origin + '/#/auth/callback')}`
-    ),
+  getOAuthUrl: (provider: 'github' | 'google', redirectTo: string) =>
+    apiFetch<{ url: string }>(`/api/auth/oauth?provider=${provider}&redirectTo=${encodeURIComponent(redirectTo)}`),
   exchangeSupabaseToken: (accessToken: string) =>
     apiFetch<{ token: string; user: UserProfile }>('/api/auth/supabase-exchange', {
       method: 'POST',
@@ -136,7 +118,7 @@ export const api = {
     }),
   logout: () => apiFetch('/api/auth/logout', { method: 'POST' }),
   subscribe: (planId: string) =>
-    apiFetch<{ user: UserProfile }>('/api/billing/subscribe', {
+    apiFetch<{ user?: UserProfile; checkoutUrl?: string; sessionId?: string }>('/api/billing/subscribe', {
       method: 'POST',
       body: JSON.stringify({ planId })
     }),
@@ -148,37 +130,46 @@ export const api = {
   openBillingPortal: () =>
     apiFetch<{ url: string }>('/api/billing/portal', { method: 'POST' }),
   topup: (amountUsd: number) =>
-    apiFetch<{ user: UserProfile }>('/api/billing/topup', {
+    apiFetch<{ user?: UserProfile; checkoutUrl?: string; sessionId?: string }>('/api/billing/topup', {
       method: 'POST',
       body: JSON.stringify({ amountUsd })
     }),
+  billingHistory: () => apiFetch<{ transactions: any[]; usage: any[] }>('/api/billing/history'),
   chat: (payload: {
     modelSlug: string;
     messages: { role: string; content: string }[];
-    enableTools?: boolean;
-    computerControlEnabled?: boolean;
-  }) => apiFetch('/api/chat/completions', { method: 'POST', body: JSON.stringify(payload) }),
-  getAdminConfig: () => apiFetch('/api/admin/config'),
-  saveAdminConfig: (payload: any) =>
-    apiFetch('/api/admin/config', { method: 'POST', body: JSON.stringify(payload) }),
-  testProvider: (payload: any) =>
-    apiFetch<{ ok: boolean; message: string }>('/api/admin/test-provider', {
+    enableTools: boolean;
+    computerControlEnabled: boolean;
+    enabledServers?: string[];
+    workspacePath?: string;
+  }) =>
+    apiFetch<{
+      content: string;
+      promptTokens: number;
+      completionTokens: number;
+      toolTrace: any[];
+      demoMode: boolean;
+      user: UserProfile;
+    }>('/api/chat/completions', {
       method: 'POST',
       body: JSON.stringify(payload)
     }),
   listMcpServers: () => apiFetch<{ servers: any[] }>('/api/mcp/servers'),
-  saveMcpServer: (srv: any) => apiFetch('/api/mcp/servers', { method: 'POST', body: JSON.stringify(srv) }),
-  deleteMcpServer: (id: string) => apiFetch(`/api/mcp/servers/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  addMcpServer: (server: any) =>
+    apiFetch<{ server: any }>('/api/mcp/servers', { method: 'POST', body: JSON.stringify(server) }),
+  deleteMcpServer: (id: string) =>
+    apiFetch(`/api/mcp/servers/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   listMcpTools: () => apiFetch<{ tools: any[] }>('/api/mcp/tools'),
-  invokeMcp: (serverId: string, toolName: string, args: Record<string, unknown>) =>
+  invokeMcpTool: (serverId: string, toolName: string, args: any) =>
     apiFetch<{ ok: boolean; output: any }>('/api/mcp/invoke', {
       method: 'POST',
       body: JSON.stringify({ serverId, toolName, arguments: args })
     }),
-  execTerminal: (command: string, cwd?: string) =>
-    apiFetch<{ ok: boolean; exitCode: number; stdout: string; stderr: string }>('/api/terminal/exec', {
-      method: 'POST',
-      body: JSON.stringify({ command, cwd })
-    })
+  execCommand: (command: string, cwd?: string) =>
+    apiFetch('/api/terminal/exec', { method: 'POST', body: JSON.stringify({ command, cwd }) }),
+  getAdminConfig: () => apiFetch('/api/admin/config'),
+  saveAdminConfig: (payload: any) =>
+    apiFetch('/api/admin/config', { method: 'POST', body: JSON.stringify(payload) }),
+  testProvider: (payload: { providerId: string; apiKey?: string; baseUrl?: string }) =>
+    apiFetch('/api/admin/test-provider', { method: 'POST', body: JSON.stringify(payload) })
 };
-

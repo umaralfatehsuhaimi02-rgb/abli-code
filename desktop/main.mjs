@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, nativeImage, shell } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createAbliServer } from '../server.mjs';
@@ -6,6 +6,14 @@ import { executeComputerTool } from '../lib/computer-control.mjs';
 import { executeReaTool } from '../mcp/rea-server.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ROOT_DIR = path.join(__dirname, '..');
+const ICON_PATH = path.join(ROOT_DIR, 'public', process.platform === 'win32' ? 'icon.ico' : 'icon.png');
+
+app.setName('Abli Code');
+if (process.platform === 'win32') {
+  app.setAppUserModelId('com.ablicode.desktop');
+}
+
 let mainWindow = null;
 let localPort = Number(process.env.PORT || 4747);
 let serverInstance = null;
@@ -14,7 +22,6 @@ async function startEmbeddedServer() {
   const srv = createAbliServer();
   return new Promise((resolve) => {
     srv.on('error', () => {
-      // Port already running (e.g. standalone `npm start`) — reuse existing server
       resolve(null);
     });
     srv.listen(localPort, '127.0.0.1', () => {
@@ -25,12 +32,16 @@ async function startEmbeddedServer() {
 }
 
 function createWindow() {
+  const appIcon = nativeImage.createFromPath(ICON_PATH);
+
   mainWindow = new BrowserWindow({
-    width: 1440,
-    height: 920,
-    minWidth: 1080,
-    minHeight: 700,
-    backgroundColor: '#050505',
+    width: 1400,
+    height: 900,
+    minWidth: 1020,
+    minHeight: 680,
+    title: 'Abli Code',
+    icon: appIcon.isEmpty() ? ICON_PATH : appIcon,
+    backgroundColor: '#060608',
     frame: false,
     titleBarStyle: 'hidden',
     webPreferences: {
@@ -38,6 +49,15 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false
     }
+  });
+
+  if (!appIcon.isEmpty()) {
+    mainWindow.setIcon(appIcon);
+  }
+  mainWindow.setTitle('Abli Code');
+  mainWindow.on('page-title-updated', (e) => {
+    e.preventDefault();
+    mainWindow?.setTitle('Abli Code');
   });
 
   mainWindow.loadURL(`http://127.0.0.1:${localPort}/?desktop=1#/app`);
