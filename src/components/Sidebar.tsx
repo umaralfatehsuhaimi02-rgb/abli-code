@@ -30,7 +30,7 @@ interface SidebarProps {
   onDuplicate: (id: string) => void;
   onExport: (id: string) => void;
   onUsePrompt: (text: string) => void;
-  onOpenMcp: () => void;
+  onOpenMcp?: () => void;
   onOpenLocal?: () => void;
   onOpenBilling: () => void;
   onLogout: () => void;
@@ -285,7 +285,7 @@ export function Sidebar(p: SidebarProps) {
       <div style={{ padding: '4px 10px 4px', display: 'grid', gap: 2 }}>
         <NavRow icon={<Plus size={15} />} label="New thread" hint="Ctrl N" onClick={() => p.onNew()} />
         <NavRow icon={<BookOpen size={15} />} label="Prompts" onClick={() => setPromptsOpen(true)} />
-        <NavRow icon={<Plug size={15} />} label="MCP servers" onClick={p.onOpenMcp} />
+        {p.onOpenMcp && <NavRow icon={<Plug size={15} />} label="MCP servers" onClick={p.onOpenMcp} />}
         {p.onOpenLocal && <NavRow icon={<Cpu size={15} />} label="Abli Mini" onClick={p.onOpenLocal} />}
         <NavRow icon={<CreditCard size={15} />} label="Plans and credits" onClick={p.onOpenBilling} />
       </div>

@@ -12,6 +12,7 @@ import { ModelShape } from './ModelShape';
 import { Markdown } from './Markdown';
 import { AttachmentBar, MessageAttachments } from './AttachmentBar';
 import { Attachment, readFiles, toApiMessage } from '../lib/attachments';
+import { withFileHint } from '../lib/filehint';
 import { CheckoutModal, CheckoutRequest } from './CheckoutModal';
 import { LocalPanel } from './LocalPanel';
 import { parseMcpJson, MCP_JSON_EXAMPLE } from '../lib/mcpjson';
@@ -158,7 +159,7 @@ export function WorkspaceApp({
   }, [threads]);
 
   useEffect(() => {
-    refreshMcp();
+    if (isDesktop) refreshMcp();
   }, []);
 
   useEffect(() => {
@@ -443,11 +444,11 @@ export function WorkspaceApp({
 
       const res = await api.chat({
         modelSlug: activeModel.slug,
-        messages: nextMessages.map((m, i) => toApiMessage(m, i === nextMessages.length - 1)),
-        enableTools: enabledServers.length > 0,
+        messages: withFileHint(nextMessages.map((m, i) => toApiMessage(m, i === nextMessages.length - 1)), isDesktop),
+        enableTools: isDesktop && enabledServers.length > 0,
         computerControlEnabled: false,
-        enabledServers,
-        workspacePath: activeThread.workspacePath
+        enabledServers: isDesktop ? enabledServers : [],
+        workspacePath: isDesktop ? activeThread.workspacePath : ''
       }, ctrl.signal);
 
       const assistantMsg: ThreadMessage = {
@@ -587,7 +588,7 @@ export function WorkspaceApp({
             onAddProject={addProject}
             onDelete={deleteThread}
             onRename={(id, title) => setThreads((prev) => prev.map((t) => (t.id === id ? { ...t, title } : t)))}
-            onOpenMcp={() => setMcpModalOpen(true)}
+            onOpenMcp={isDesktop ? () => setMcpModalOpen(true) : undefined}
             onOpenLocal={() => setLocalOpen(true)}
             
             onOpenBilling={() => { setBillingOpen(true); refreshBillingHistory(); }}
@@ -610,7 +611,7 @@ export function WorkspaceApp({
                 <PanelLeft size={15} />
               </button>
             )}
-            <button
+            {isDesktop && <button
               onClick={pickWorkspaceFolder}
               className="glass-pill"
               style={{ padding: '5px 12px', fontSize: 12, color: activeThread?.workspacePath ? '#e4e4ec' : '#8e8e9c', display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
@@ -619,7 +620,7 @@ export function WorkspaceApp({
               <span style={{ maxWidth: 360, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {activeThread?.workspacePath || 'Select project folder'}
               </span>
-            </button>
+            </button>}
             {activeThread && activeThread.messages.length > 0 && (
               <span style={{ fontSize: 13, fontWeight: 700, color: '#e4e4ec', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {activeThread.title}
@@ -919,7 +920,7 @@ export function WorkspaceApp({
               )}
 
               {/* + Tools & MCP Popover */}
-              {toolsMenuOpen && (
+              {isDesktop && toolsMenuOpen && (
                 <div
                   className="pop-in"
                   style={{
@@ -1177,7 +1178,7 @@ export function WorkspaceApp({
       </div>
 
       {/* Add / Manage MCP Servers Modal */}
-      {mcpModalOpen && (
+      {isDesktop && mcpModalOpen && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 90, background: 'rgba(0,0,0,0.75)', display: 'grid', placeItems: 'center', padding: 16 }}>
           <div className="pop-in" style={{ width: '100%', maxWidth: 540, background: '#0e0e13', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 22, padding: 24 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>

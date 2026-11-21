@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Check, Copy } from 'lucide-react';
+import { Check, Copy, Download } from 'lucide-react';
+import { parseFence, defaultName, saveText, downloadProject } from '../lib/files';
 
 const RED = '#ff2a43';
 
@@ -36,10 +37,18 @@ function inline(text: string, keyBase: string): React.ReactNode[] {
 
 function CodeBlock({ code, lang }: { code: string; lang: string }) {
   const [copied, setCopied] = useState(false);
+  const fi = parseFence(lang, code);
   return (
     <div style={{ background: '#08080c', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 14, overflow: 'hidden', margin: '10px 0' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px 6px 14px', borderBottom: '1px solid rgba(255,255,255,0.07)', fontSize: 11, color: '#8e8e9c' }}>
-        <span style={{ letterSpacing: '0.04em' }}>{lang || 'code'}</span>
+        <span style={{ letterSpacing: '0.04em' }}>{fi.path ? fi.path : fi.lang || 'code'}</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
+        <button
+          onClick={() => saveText(fi.path || defaultName(fi.lang), code)}
+          style={{ background: 'none', border: 'none', color: '#8e8e9c', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontFamily: 'inherit' }}
+        >
+          <Download size={12} /> Save
+        </button>
         <button
           onClick={() => {
             navigator.clipboard?.writeText(code).then(() => {
@@ -51,6 +60,7 @@ function CodeBlock({ code, lang }: { code: string; lang: string }) {
         >
           {copied ? <Check size={12} /> : <Copy size={12} />} {copied ? 'Copied' : 'Copy'}
         </button>
+        </span>
       </div>
       <pre style={{ margin: 0, padding: '12px 14px', overflowX: 'auto', fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 12.5, lineHeight: 1.6, color: '#e4e4ec' }}>{code}</pre>
     </div>
@@ -60,6 +70,7 @@ function CodeBlock({ code, lang }: { code: string; lang: string }) {
 export function Markdown({ text }: { text: string }) {
   const lines = (text || '').split(/\r?\n/);
   const blocks: React.ReactNode[] = [];
+  const projectFiles: { path: string; content: string }[] = [];
   let i = 0;
   let n = 0;
   while (i < lines.length) {
@@ -72,7 +83,10 @@ export function Markdown({ text }: { text: string }) {
       i++;
       while (i < lines.length && !lines[i].trim().startsWith('```')) buf.push(lines[i++]);
       i++;
-      blocks.push(<CodeBlock key={key} code={buf.join(String.fromCharCode(10))} lang={lang} />);
+      const body = buf.join(String.fromCharCode(10));
+      const fi = parseFence(lang, body);
+      if (fi.path) projectFiles.push({ path: fi.path, content: body });
+      blocks.push(<CodeBlock key={key} code={body} lang={lang} />);
       continue;
     }
 
@@ -152,6 +166,13 @@ export function Markdown({ text }: { text: string }) {
       <p key={key} style={{ margin: '6px 0', whiteSpace: 'pre-wrap' }}>
         {inline(para.join(String.fromCharCode(10)), key)}
       </p>
+    );
+  }
+  if (projectFiles.length >= 2) {
+    blocks.push(
+      <button key="dl-project" className="btn-outline" onClick={() => downloadProject(projectFiles)} style={{ padding: '8px 14px', fontSize: 12.5, borderRadius: 12, display: 'inline-flex', alignItems: 'center', gap: 7, margin: '4px 0 8px', cursor: 'pointer' }}>
+        <Download size={14} /> Download folder ({projectFiles.length} files)
+      </button>
     );
   }
   return <div>{blocks}</div>;

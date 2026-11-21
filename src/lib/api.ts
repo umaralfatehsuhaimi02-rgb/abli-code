@@ -84,6 +84,7 @@ export async function apiFetch<T = any>(path: string, init: RequestInit & { time
     ...(rest.headers as Record<string, string> | undefined)
   };
   if (token) headers.Authorization = 'Bearer ' + token;
+  if ((window as any).abliDesktop?.isDesktop) headers['x-abli-desktop'] = '1';
 
   let signal = rest.signal || undefined;
   let timedOut = false;

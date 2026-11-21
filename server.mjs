@@ -107,6 +107,18 @@ const MIME = {
   '.ico': 'image/x-icon'
 };
 
+function isLocalReq(req) {
+  const a = req.socket && req.socket.remoteAddress || '';
+  const local = a === '127.0.0.1' || a === '::1' || a === '::ffff:127.0.0.1';
+  return local && !req.headers['x-forwarded-for'] && !req.headers['forwarded'];
+}
+
+// Tools (MCP, terminal) run on the machine hosting this server, so they are only
+// reachable from the desktop app talking to a local server. The web app never gets them.
+function toolsAllowed(req) {
+  return isLocalReq(req) && req.headers['x-abli-desktop'] === '1';
+}
+
 function json(res, status, data) {
   res.writeHead(status, {
     'Content-Type': 'application/json; charset=utf-8',
@@ -669,10 +681,10 @@ export function createAbliServer() {
         const result = await runChatCompletion({
           model,
           messages: Array.isArray(body.messages) ? sanitizeMessages(body.messages) : [],
-          enableTools: body.enableTools !== false,
+          enableTools: body.enableTools !== false && toolsAllowed(req),
           computerControlEnabled: Boolean(body.computerControlEnabled),
-          enabledServers: Array.isArray(body.enabledServers) ? body.enabledServers : null,
-          workspacePath: typeof body.workspacePath === 'string' ? body.workspacePath : ''
+          enabledServers: toolsAllowed(req) && Array.isArray(body.enabledServers) ? body.enabledServers : [],
+          workspacePath: toolsAllowed(req) && typeof body.workspacePath === 'string' ? body.workspacePath : ''
         });
 
         const updatedUser = await recordUsage(
@@ -687,6 +699,13 @@ export function createAbliServer() {
           modelSlug: model.slug,
           user: updatedUser
         });
+      }
+
+      if ((pathname.startsWith('/api/mcp/') || pathname === '/api/terminal/exec') && !toolsAllowed(req)) {
+        return json(res, 403, { error: 'Tools are only available in the desktop app.' });
+      }
+      if (pathname === '/mcp' && !isLocalReq(req)) {
+        return json(res, 403, { error: 'Not available.' });
       }
 
       // MCP Hub APIs
