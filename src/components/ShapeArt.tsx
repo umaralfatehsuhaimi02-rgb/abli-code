@@ -4,20 +4,18 @@ const RED = '#ff2a43';
 const INK = '#060608';
 const PAPER = '#fafafa';
 
-export function ShapeArt({ size = 180 }: { size?: number }) {
+// Four shapes in a clean row: circle, logo square, triangle, ring. Nothing overlaps.
+export function ShapeArt({ size = 380 }: { size?: number }) {
   return (
-    <svg viewBox="0 0 240 240" width={size} height={size} role="img" aria-label="Abstract geometric artwork" style={{ display: 'block', margin: '0 auto' }}>
-      <circle className="shape-spin" cx="120" cy="120" r="108" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" strokeDasharray="3 9" />
-      <circle cx="120" cy="120" r="74" fill={RED} />
+    <svg viewBox="0 0 420 100" width={size} height={(size * 100) / 420} role="img" aria-label="Abstract geometric artwork" style={{ display: 'block', margin: '0 auto' }}>
+      <circle cx="50" cy="50" r="44" fill={RED} />
       <g className="shape-float">
-        <rect x="44" y="50" width="76" height="76" rx="18" fill={PAPER} />
+        <rect x="118" y="8" width="84" height="84" rx="24" fill={PAPER} />
+        <path d="M138 72 L160 28 L182 72" fill="none" stroke={INK} strokeWidth="9" strokeLinecap="round" strokeLinejoin="round" />
+        <rect x="148" y="58" width="24" height="8" rx="4" fill={RED} />
       </g>
-      <path d="M150 196 L192 118 L226 196 Z" fill={INK} stroke={PAPER} strokeWidth="3" strokeLinejoin="round" />
-      <circle cx="190" cy="48" r="22" fill="none" stroke={PAPER} strokeWidth="7" />
-      <path d="M30 188 A46 46 0 0 1 76 142 L76 188 Z" fill={PAPER} />
-      <rect x="98" y="164" width="44" height="10" rx="5" fill={RED} />
-      <rect x="98" y="182" width="28" height="10" rx="5" fill={PAPER} />
-      <path d="M66 98 L84 60 L102 98" fill="none" stroke={INK} strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M268 10 L312 90 L224 90 Z" fill="none" stroke={PAPER} strokeWidth="5" strokeLinejoin="round" />
+      <circle className="shape-spin" cx="366" cy="50" r="38" fill="none" stroke={PAPER} strokeWidth="10" strokeDasharray="22 14" />
     </svg>
   );
 }

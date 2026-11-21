@@ -28,12 +28,18 @@ interface Thread {
 
 const THREADS_KEY = 'abli_codex_threads_v1';
 
-function loadSavedThreads(defaultModelSlug: string): Thread[] {
+function loadSavedThreads(defaultModelSlug: string, validSlugs: string[] = []): Thread[] {
   try {
     const raw = localStorage.getItem(THREADS_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        // Threads saved with a model that no longer exists move to the default model.
+        return parsed.map((t: Thread) => ({
+          ...t,
+          modelSlug: validSlugs.length === 0 || validSlugs.includes(t.modelSlug) ? t.modelSlug : defaultModelSlug
+        }));
+      }
     }
   } catch {}
   return [
@@ -72,8 +78,8 @@ export function WorkspaceApp({
   const isDesktop = Boolean((window as any).abliDesktop?.isDesktop);
   const desktopApi = (window as any).abliDesktop;
 
-  const defaultModelSlug = catalog.models[0]?.slug || 'deepseek-abliterated';
-  const [threads, setThreads] = useState<Thread[]>(() => loadSavedThreads(defaultModelSlug));
+  const defaultModelSlug = catalog.models[0]?.slug || 'glm-5.3-flash-abliterated';
+  const [threads, setThreads] = useState<Thread[]>(() => loadSavedThreads(defaultModelSlug, catalog.models.map((m) => m.slug)));
   const [activeThreadId, setActiveThreadId] = useState<string>(() => threads[0]?.id || '');
 
   const activeThread = useMemo(
@@ -559,9 +565,9 @@ export function WorkspaceApp({
               {activeThread?.messages.length === 0 ? (
                 <div className="fade-up" style={{ textAlign: 'center', paddingTop: '8vh', paddingBottom: 32 }}>
                   <div style={{ display: 'inline-flex', marginBottom: 18 }}>
-                    <ShapeArt size={190} />
+                    <ShapeArt size={380} />
                   </div>
-                  <h1 style={{ fontSize: 40, fontWeight: 900, margin: '0 0 10px', letterSpacing: '-0.045em' }}>
+                  <h1 style={{ fontSize: 34, fontWeight: 800, margin: '22px 0 10px', letterSpacing: '-0.03em' }}>
                     What are we building today?
                   </h1>
                   <p style={{ fontSize: 14.5, color: '#8e8e9c', margin: '0 auto 28px', maxWidth: 460 }}>
@@ -710,6 +716,9 @@ export function WorkspaceApp({
 
               {/* Model Switcher Popover */}
               {modelMenuOpen && (
+                <div onClick={() => setModelMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 25, background: 'rgba(0,0,0,0.62)' }} />
+              )}
+              {modelMenuOpen && (
                 <div
                   className="pop-in"
                   style={{
@@ -729,12 +738,12 @@ export function WorkspaceApp({
                   }}
                 >
                   {[
-                    { label: 'Free models', items: freeModels },
-                    { label: 'Cheap & Fast', items: cheapModels },
-                    { label: 'Flagship', items: premiumModels }
+                    { label: 'FREE MODELS', items: freeModels },
+                    { label: 'CHEAP AND FAST', items: cheapModels },
+                    { label: 'FLAGSHIP', items: premiumModels }
                   ].map((group) => (
                     <div key={group.label} style={{ marginBottom: 10 }}>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: '#71717e', padding: '6px 10px' }}>{group.label}</div>
+                      <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.12em', color: '#ff2a43', padding: '6px 10px' }}>{group.label}</div>
                       {group.items.map((m) => {
                         const selected = m.slug === activeModel?.slug;
                         const freeInfo = m.tier === 'free' ? user?.freeUsageByModel?.[m.slug] : null;
