@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowUp, Check, ChevronDown, Cpu, CreditCard, FolderOpen,
   KeyRound, LogOut, Maximize2, Minimize2, Monitor, Plus, Plug,
@@ -227,7 +227,7 @@ export function WorkspaceApp({
 
     const nextMessages = [...activeThread.messages, userMsg];
     const nextTitle =
-      activeThread.messages.length === 0 ? text.slice(0, 42) + (text.length > 42 ? '…' : '') : activeThread.title;
+      activeThread.messages.length === 0 ? text.slice(0, 42) + (text.length > 42 ? 'â€¦' : '') : activeThread.title;
 
     updateActiveThread((t) => ({
       ...t,
@@ -393,14 +393,14 @@ export function WorkspaceApp({
             style={{ padding: '6px 12px', fontSize: 12, color: '#e4e4ec', display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
           >
             <CreditCard size={13} color="#ff2a43" />
-            {user ? `${user.plan.toUpperCase()} · $${user.creditBalanceUsd.toFixed(2)}` : 'Plans'}
+            {user ? `${user.plan.toUpperCase()} Â· $${user.creditBalanceUsd.toFixed(2)}` : 'Plans'}
           </button>
 
           <button
             onClick={onOpenOperator}
             className="glass-pill"
             title="API Keys & Stripe Settings"
-            style={{ padding: '6px 10px', color: '#c4c4d0', display: 'inline-flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontSize: 12 }}
+            style={{ padding: '6px 10px', color: '#c4c4d0', display: user?.role === 'admin' ? 'inline-flex' : 'none', alignItems: 'center', gap: 5, cursor: 'pointer', fontSize: 12 }}
           >
             <KeyRound size={13} /> Keys
           </button>
@@ -732,7 +732,7 @@ export function WorkspaceApp({
                   }}
                 >
                   {[
-                    { label: 'Free Models · 750K/day each', items: freeModels },
+                    { label: 'Free Models Â· 750K/day each', items: freeModels },
                     { label: 'Cheap & Fast', items: cheapModels },
                     { label: 'Flagship', items: premiumModels }
                   ].map((group) => (
@@ -851,7 +851,7 @@ export function WorkspaceApp({
                         >
                           <div>
                             <div style={{ fontSize: 13, fontWeight: 600 }}>{s.name}</div>
-                            <div style={{ fontSize: 11, color: '#8e8e9c' }}>{toolCount} tools · {s.transport}</div>
+                            <div style={{ fontSize: 11, color: '#8e8e9c' }}>{toolCount} tools Â· {s.transport}</div>
                           </div>
                           <div
                             style={{
@@ -1102,7 +1102,7 @@ export function WorkspaceApp({
                 <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: 12, background: '#14141a', border: '1px solid rgba(255,255,255,0.07)' }}>
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 600 }}>{s.name}</div>
-                    <div style={{ fontSize: 11, color: '#8e8e9c' }}>{s.transport} · {s.builtIn ? 'Built-in' : 'Custom'}</div>
+                    <div style={{ fontSize: 11, color: '#8e8e9c' }}>{s.transport} Â· {s.builtIn ? 'Built-in' : 'Custom'}</div>
                   </div>
                   {!s.builtIn && (
                     <button
@@ -1130,7 +1130,7 @@ export function WorkspaceApp({
               <div>
                 <h3 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>Plans &amp; Credit Top-Ups</h3>
                 <p style={{ margin: '4px 0 0', fontSize: 13, color: '#8e8e9c' }}>
-                  Current plan: <strong style={{ color: '#fff' }}>{user?.plan.toUpperCase() || 'FREE'}</strong> · Credits: <strong style={{ color: '#fff' }}>${(user?.creditBalanceUsd || 0).toFixed(2)}</strong>
+                  Current plan: <strong style={{ color: '#fff' }}>{user?.plan.toUpperCase() || 'FREE'}</strong> Â· Credits: <strong style={{ color: '#fff' }}>${(user?.creditBalanceUsd || 0).toFixed(2)}</strong>
                 </p>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
@@ -1222,3 +1222,4 @@ export function WorkspaceApp({
     </div>
   );
 }
+

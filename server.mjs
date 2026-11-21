@@ -1,4 +1,4 @@
-import http from 'node:http';
+﻿import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -41,7 +41,7 @@ import {
   registerWithEmail,
   sendVerificationCode
 } from './lib/auth.mjs';
-import { DAILY_FREE_TOKEN_LIMIT, PLANS, PLATFORM_PRESETS, TOPUP_PACKS } from './lib/pricing.mjs';
+import { DAILY_FREE_TOKEN_LIMIT, PLANS, PLATFORM_PRESETS, TOPUP_PACKS, topUpQuote } from './lib/pricing.mjs';
 import {
   createStripeCheckoutSession,
   createStripePortalSession,
@@ -102,8 +102,8 @@ function getBearer(req) {
 
 function maskKey(k = '') {
   if (!k) return '';
-  if (k.length <= 8) return '••••••••';
-  return `${k.slice(0, 4)}••••${k.slice(-4)}`;
+  if (k.length <= 8) return 'â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢';
+  return `${k.slice(0, 4)}â€¢â€¢â€¢â€¢${k.slice(-4)}`;
 }
 
 function sanitizePublicPlan(plan) {
@@ -269,23 +269,24 @@ export function createAbliServer() {
         const body = await readBody(req);
         const st = await getState();
         const amt = Number(body.amountUsd);
-        if (!Number.isFinite(amt) || amt <= 0) return json(res, 400, { error: 'Invalid top-up amount' });
+        const quote = topUpQuote(amt);
+        if (!quote) return json(res, 400, { error: 'Minimum top-up is $5.00' });
 
         if (st.settings.stripeSecretKey) {
           const session = await createStripeCheckoutSession({
             secretKey: st.settings.stripeSecretKey,
             mode: 'payment',
-            amountUsd: amt,
+            amountUsd: quote.total,
             customerEmail: user.email,
-            productName: `Abli Code Credits (+$${amt.toFixed(2)})`,
-            metadata: { kind: 'topup', userId: user.id, amountUsd: String(amt) },
+            productName: `Abli Code Credits ($${quote.credits.toFixed(2)} + $${quote.fee.toFixed(2)} service fee)`,
+            metadata: { kind: 'topup', userId: user.id, amountUsd: String(quote.credits), feeUsd: String(quote.fee) },
             successUrl: `${st.settings.appUrl}/#/app?topup=success&session_id={CHECKOUT_SESSION_ID}`,
             cancelUrl: `${st.settings.appUrl}/#/app`
           });
           return json(res, 200, { checkoutUrl: session.url, sessionId: session.id });
         }
 
-        const updated = await applyTopUp(user.id, amt);
+        const updated = await applyTopUp(user.id, quote.credits);
         return json(res, 200, { user: updated });
       }
 
@@ -416,16 +417,16 @@ export function createAbliServer() {
           for (const key of ['appUrl', 'contactEmail', 'adminEmail', 'supabaseUrl', 'supabasePublishableKey', 'emailFrom']) {
             if (typeof body.settings[key] === 'string') st.settings[key] = body.settings[key].trim();
           }
-          if (body.settings.supabaseServiceRoleKey && !body.settings.supabaseServiceRoleKey.includes('••••')) {
+          if (body.settings.supabaseServiceRoleKey && !body.settings.supabaseServiceRoleKey.includes('â€¢â€¢â€¢â€¢')) {
             st.settings.supabaseServiceRoleKey = body.settings.supabaseServiceRoleKey.trim();
           }
-          if (body.settings.resendApiKey && !body.settings.resendApiKey.includes('••••')) {
+          if (body.settings.resendApiKey && !body.settings.resendApiKey.includes('â€¢â€¢â€¢â€¢')) {
             st.settings.resendApiKey = body.settings.resendApiKey.trim();
           }
-          if (body.settings.stripeSecretKey && !body.settings.stripeSecretKey.includes('••••')) {
+          if (body.settings.stripeSecretKey && !body.settings.stripeSecretKey.includes('â€¢â€¢â€¢â€¢')) {
             st.settings.stripeSecretKey = body.settings.stripeSecretKey.trim();
           }
-          if (body.settings.stripeWebhookSecret && !body.settings.stripeWebhookSecret.includes('••••')) {
+          if (body.settings.stripeWebhookSecret && !body.settings.stripeWebhookSecret.includes('â€¢â€¢â€¢â€¢')) {
             st.settings.stripeWebhookSecret = body.settings.stripeWebhookSecret.trim();
           }
         }
@@ -436,7 +437,7 @@ export function createAbliServer() {
             if (target) {
               if (typeof incoming.baseUrl === 'string') target.baseUrl = incoming.baseUrl.trim();
               if (typeof incoming.enabled === 'boolean') target.enabled = incoming.enabled;
-              if (incoming.apiKey && !incoming.apiKey.includes('••••')) {
+              if (incoming.apiKey && !incoming.apiKey.includes('â€¢â€¢â€¢â€¢')) {
                 target.apiKey = incoming.apiKey.trim();
                 target.enabled = true;
               }
@@ -457,7 +458,7 @@ export function createAbliServer() {
         const st = await getState();
         const provider = st.providers.find((p) => p.id === body.providerId);
         if (!provider) return json(res, 404, { error: 'Provider not found' });
-        const key = body.apiKey && !body.apiKey.includes('••••') ? body.apiKey : provider.apiKey;
+        const key = body.apiKey && !body.apiKey.includes('â€¢â€¢â€¢â€¢') ? body.apiKey : provider.apiKey;
         const base = (body.baseUrl || provider.baseUrl || '').replace(/\/$/, '');
         if (!base) return json(res, 400, { error: 'Base URL required' });
         try {
@@ -610,3 +611,4 @@ if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToP
     console.log(`  MCP endpoint                         -> http://127.0.0.1:${port}/mcp\n`);
   });
 }
+
