@@ -63,6 +63,7 @@ export async function saveCustomMcpServer(server) {
       : String(server.args || '').split(/\s+/).filter(Boolean),
     url: server.url || '',
     headers: server.headers || {},
+    env: server.env && typeof server.env === 'object' && !Array.isArray(server.env) ? server.env : {},
     enabled: server.enabled !== false,
     builtin: false,
     description: server.description || 'External MCP server'
@@ -86,6 +87,7 @@ async function callStdioMcp(server, method, params = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(server.command, server.args || [], {
       cwd: ROOT_DIR,
+      env: { ...process.env, ...(server.env || {}) },
       stdio: ['pipe', 'pipe', 'pipe'],
       shell: process.platform === 'win32'
     });

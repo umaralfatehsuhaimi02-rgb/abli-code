@@ -13,6 +13,9 @@ import { Markdown } from './Markdown';
 import { AttachmentBar, MessageAttachments } from './AttachmentBar';
 import { Attachment, readFiles, toApiMessage } from '../lib/attachments';
 import { CheckoutModal, CheckoutRequest } from './CheckoutModal';
+import { LocalPanel } from './LocalPanel';
+import { parseMcpJson, MCP_JSON_EXAMPLE } from '../lib/mcpjson';
+import { LOCAL_MODELS, LOCAL_CONFIGS, isLocalSlug, localIdOf, ensureLocalRunning, streamLocalChat } from '../lib/local';
 
 interface ThreadMessage {
   attachments?: Attachment[];
@@ -84,7 +87,7 @@ export function WorkspaceApp({
   const desktopApi = (window as any).abliDesktop;
 
   const defaultModelSlug = catalog.models[0]?.slug || 'deepseek-v4.1-flash-fast';
-  const [threads, setThreads] = useState<Thread[]>(() => loadSavedThreads(defaultModelSlug, catalog.models.map((m) => m.slug)));
+  const [threads, setThreads] = useState<Thread[]>(() => loadSavedThreads(defaultModelSlug, [...catalog.models.map((m) => m.slug), ...LOCAL_MODELS.map((m) => m.slug)]));
   const [activeThreadId, setActiveThreadId] = useState<string>(() => threads[0]?.id || '');
 
   const activeThread = useMemo(
@@ -110,6 +113,7 @@ export function WorkspaceApp({
 
   // Codex Popovers & Modals
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
+  const [localOpen, setLocalOpen] = useState(false);
   const [toolsMenuOpen, setToolsMenuOpen] = useState(false);
   const [billingOpen, setBillingOpen] = useState(false);
   const [mcpModalOpen, setMcpModalOpen] = useState(false);
@@ -121,6 +125,9 @@ export function WorkspaceApp({
   const [enabledServers, setEnabledServers] = useState<string[]>(['stock-rea']);
   const [newMcp, setNewMcp] = useState({ name: '', transport: 'stdio', command: 'npx', args: '', url: '' });
   const [mcpBusy, setMcpBusy] = useState(false);
+  const [mcpMode, setMcpMode] = useState<'form' | 'json'>('form');
+  const [mcpJson, setMcpJson] = useState('');
+  const [mcpJsonMsg, setMcpJsonMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   // Computer Quick Control Drawer state
   const [shellCmd, setShellCmd] = useState('');
@@ -130,6 +137,7 @@ export function WorkspaceApp({
   // Billing modal state
   const [billingHistory, setBillingHistory] = useState<{ transactions: any[]; usage: any[] }>({ transactions: [], usage: [] });
   const [billingBusy, setBillingBusy] = useState('');
+  const [billingError, setBillingError] = useState('');
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
@@ -350,11 +358,12 @@ export function WorkspaceApp({
   };
 
   const activeModel: ModelConfig =
-    catalog.models.find((m) => m.slug === activeThread?.modelSlug) || catalog.models[0];
+    [...catalog.models, ...LOCAL_CONFIGS].find((m) => m.slug === activeThread?.modelSlug) || catalog.models[0];
 
   const freeModels = catalog.models.filter((m) => m.tier === 'free');
   const cheapModels = catalog.models.filter((m) => m.tier === 'cheap');
   const premiumModels = catalog.models.filter((m) => m.tier === 'premium');
+  const localModels = isDesktop ? LOCAL_CONFIGS : [];
 
   const toggleServer = (id: string) => {
     setEnabledServers((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -364,7 +373,7 @@ export function WorkspaceApp({
     const text = (overrideText ?? input).trim();
     const sendAtts: Attachment[] | undefined = opts?.attachments ?? (overrideText === undefined ? attachments : undefined);
     if ((!text && !(sendAtts && sendAtts.length)) || sending) return;
-    if (!user) {
+    if (!user && !isLocalSlug(activeModel.slug)) {
       onOpenAuth();
       return;
     }
@@ -400,6 +409,38 @@ export function WorkspaceApp({
     const ctrl = new AbortController();
     abortRef.current = ctrl;
     try {
+      if (isLocalSlug(activeModel.slug)) {
+        const lid = localIdOf(activeModel.slug);
+        const asstId = crypto.randomUUID();
+        let acc = '';
+        let thinking = false;
+        let raf = 0;
+        const flush = () => {
+          raf = 0;
+          const content = acc || (thinking ? 'Thinking...' : '');
+          updateActiveThread((t) => ({
+            ...t,
+            messages: [...nextMessages, { id: asstId, role: 'assistant' as const, content, modelName: activeModel.name, toolTrace: [], createdAt: new Date().toISOString() }],
+            updatedAt: new Date().toISOString()
+          }));
+        };
+        const schedule = () => { if (!raf) raf = requestAnimationFrame(flush); };
+        try {
+          await ensureLocalRunning(lid, activeModel.name);
+          await streamLocalChat({
+            id: lid,
+            messages: nextMessages.map((m) => toApiMessage(m, false)),
+            onDelta: (d) => { acc += d; schedule(); },
+            onThinking: () => { if (!thinking) { thinking = true; schedule(); } },
+            signal: ctrl.signal
+          });
+        } finally {
+          if (raf) cancelAnimationFrame(raf);
+          if (acc) flush();
+        }
+        return;
+      }
+
       const res = await api.chat({
         modelSlug: activeModel.slug,
         messages: nextMessages.map((m, i) => toApiMessage(m, i === nextMessages.length - 1)),
@@ -431,12 +472,40 @@ export function WorkspaceApp({
         return;
       }
       setChatError(err.message);
+      if (err?.needsInstall) setLocalOpen(true);
       if (err.code === 'PLAN_LIMIT_REACHED' || err.code === 'UPGRADE_REQUIRED' || err.code === 'FREE_DAILY_LIMIT_REACHED') {
         setBillingOpen(true);
         refreshBillingHistory();
       }
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleImportMcpJson = async () => {
+    setMcpJsonMsg(null);
+    let list;
+    try {
+      list = parseMcpJson(mcpJson);
+    } catch (e: any) {
+      setMcpJsonMsg({ ok: false, text: e.message });
+      return;
+    }
+    setMcpBusy(true);
+    try {
+      const ids: string[] = [];
+      for (const s of list) {
+        const res = await api.addMcpServer(s);
+        if (res.server?.id) ids.push(res.server.id);
+      }
+      setEnabledServers((prev) => Array.from(new Set([...prev, ...ids])));
+      setMcpJson('');
+      setMcpJsonMsg({ ok: true, text: 'Added ' + list.length + (list.length === 1 ? ' server: ' : ' servers: ') + list.map((s) => s.name).join(', ') });
+      await refreshMcp();
+    } catch (e: any) {
+      setMcpJsonMsg({ ok: false, text: e?.message || 'Could not add the servers.' });
+    } finally {
+      setMcpBusy(false);
     }
   };
 
@@ -496,7 +565,7 @@ export function WorkspaceApp({
             threads={threads}
             activeId={activeThread?.id || ''}
             busyId={sending ? activeThread?.id : ''}
-            modelName={(slug) => catalog.models.find((m) => m.slug === slug)?.name || slug}
+            modelName={(slug) => [...catalog.models, ...LOCAL_CONFIGS].find((m) => m.slug === slug)?.name || slug}
             user={user}
             usage={(() => {
               if (!user) return null;
@@ -519,6 +588,7 @@ export function WorkspaceApp({
             onDelete={deleteThread}
             onRename={(id, title) => setThreads((prev) => prev.map((t) => (t.id === id ? { ...t, title } : t)))}
             onOpenMcp={() => setMcpModalOpen(true)}
+            onOpenLocal={() => setLocalOpen(true)}
             
             onOpenBilling={() => { setBillingOpen(true); refreshBillingHistory(); }}
             onLogout={onLogout}
@@ -780,10 +850,16 @@ export function WorkspaceApp({
                   {[
                     { label: 'FREE MODELS', items: freeModels },
                     { label: 'CHEAP AND FAST', items: cheapModels },
-                    { label: 'FLAGSHIP', items: premiumModels }
-                  ].map((group) => (
+                    { label: 'FLAGSHIP', items: premiumModels },
+                    { label: 'ABLI MINI', items: localModels }
+                  ].filter((g) => g.items.length > 0).map((group) => (
                     <div key={group.label} style={{ marginBottom: 10 }}>
-                      <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.12em', color: '#ff2a43', padding: '6px 10px' }}>{group.label}</div>
+                      <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.12em', color: '#ff2a43', padding: '6px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>{group.label}</span>
+                        {group.label === 'ABLI MINI' && (
+                          <span onClick={(e) => { e.stopPropagation(); setModelMenuOpen(false); setLocalOpen(true); }} style={{ cursor: 'pointer', color: '#c4c4d0', fontWeight: 600, letterSpacing: 0, textDecoration: 'underline' }}>Can my PC run it?</span>
+                        )}
+                      </div>
                       {group.items.map((m) => {
                         const selected = m.slug === activeModel?.slug;
                         const freeInfo = user?.freeUsageByModel?.[m.slug] || null;
@@ -832,7 +908,7 @@ export function WorkspaceApp({
                                 flexShrink: 0
                               }}
                             >
-                              {m.tier === 'free' ? 'FREE' : m.tier === 'cheap' ? 'CHEAP' : 'PRO'}
+                              {isLocalSlug(m.slug) ? 'LOCAL' : m.tier === 'free' ? 'FREE' : m.tier === 'cheap' ? 'CHEAP' : 'PRO'}
                             </span>
                           </button>
                         );
@@ -1109,7 +1185,30 @@ export function WorkspaceApp({
               <button onClick={() => setMcpModalOpen(false)} style={{ background: 'none', border: 'none', color: '#8e8e9c', cursor: 'pointer' }}><X size={18} /></button>
             </div>
 
-            <form onSubmit={handleAddMcp} style={{ display: 'grid', gap: 10, marginBottom: 18 }}>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+              {(['form', 'json'] as const).map((m) => (
+                <button key={m} type="button" onClick={() => setMcpMode(m)} style={{ padding: '6px 14px', borderRadius: 999, border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, background: mcpMode === m ? '#ff2a43' : 'rgba(255,255,255,0.07)', color: '#fff' }}>
+                  {m === 'form' ? 'Fill in' : 'Paste JSON'}
+                </button>
+              ))}
+            </div>
+            {mcpMode === 'json' && (
+              <div style={{ display: 'grid', gap: 10, marginBottom: 18 }}>
+                <textarea
+                  value={mcpJson}
+                  onChange={(e) => setMcpJson(e.target.value)}
+                  spellCheck={false}
+                  placeholder={MCP_JSON_EXAMPLE}
+                  style={{ minHeight: 190, resize: 'vertical', padding: '10px 12px', borderRadius: 12, background: '#15151c', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', fontSize: 12.5, fontFamily: 'ui-monospace, Consolas, monospace' }}
+                />
+                <button className="btn-red" type="button" disabled={mcpBusy || !mcpJson.trim()} onClick={handleImportMcpJson} style={{ padding: '10px', borderRadius: 12, fontSize: 13 }}>
+                  {mcpBusy ? 'Adding...' : 'Add from JSON'}
+                </button>
+                {mcpJsonMsg && <div style={{ fontSize: 12.5, color: mcpJsonMsg.ok ? '#4ade80' : '#ff6b7d' }}>{mcpJsonMsg.text}</div>}
+              </div>
+            )}
+
+            <form onSubmit={handleAddMcp} style={{ display: mcpMode === 'form' ? 'grid' : 'none', gap: 10, marginBottom: 18 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: 8 }}>
                 <input
                   value={newMcp.name}
@@ -1180,13 +1279,32 @@ export function WorkspaceApp({
         </div>
       )}
 
+      {localOpen && (
+        <LocalPanel
+          releasesUrl="https://github.com/umaralfatehsuhaimi02-rgb/abli-code/releases/latest"
+          onClose={() => setLocalOpen(false)}
+          onUse={(slug) => updateActiveThread((t) => ({ ...t, modelSlug: slug }))}
+        />
+      )}
+
       {/* Plans & Stripe Top-Up Modal (Undisclosed backend cap) */}
               <CheckoutModal
           req={checkoutReq}
           onClose={() => setCheckoutReq(null)}
           onComplete={async (sid) => {
             try {
-              const r = await api.verifyStripeSession(sid);
+              let r: any = null;
+              let last: any = null;
+              for (let i = 0; i < 6 && !r; i++) {
+                try {
+                  r = await api.verifyStripeSession(sid);
+                } catch (e: any) {
+                  last = e;
+                  if (!/not paid yet/i.test(e?.message || '')) break;
+                  await new Promise((x) => setTimeout(x, 1500));
+                }
+              }
+              if (!r) throw last || new Error('Could not confirm the payment yet. It will show up shortly.');
               onUserChange(r.user);
             } catch (e: any) {
               alert(e.message);
@@ -1246,17 +1364,20 @@ export function WorkspaceApp({
                       if (!user) return onOpenAuth();
                       if (p.priceUsd === 0 && !window.confirm('Switch to Free? Your paid plan ends now.')) return;
                       setBillingBusy(p.id);
+                      setBillingError('');
                       try {
                         const r = await api.subscribe(p.id);
                         if (r.clientSecret && r.publishableKey && r.sessionId) setCheckoutReq({ clientSecret: r.clientSecret, publishableKey: r.publishableKey, sessionId: r.sessionId, title: p.name + ' plan, $' + p.priceUsd + '/mo' });
                         else if (r.checkoutUrl) window.location.href = r.checkoutUrl;
                         else if (r.user) onUserChange(r.user);
+                      } catch (e: any) {
+                        setBillingError(e?.message || 'Could not start checkout. Try again.');
                       } finally {
                         setBillingBusy('');
                       }
                     }}
                   >
-                    {user?.plan === p.id ? 'Current plan' : p.priceUsd === 0 ? 'Switch to Free' : p.priceUsd > (catalog.plans.find((x) => x.id === user?.plan)?.priceUsd ?? 0) ? 'Upgrade to ' + p.name : 'Downgrade to ' + p.name}
+                    {billingBusy === p.id ? 'Opening checkout...' : user?.plan === p.id ? 'Current plan' : p.priceUsd === 0 ? 'Switch to Free' : p.priceUsd > (catalog.plans.find((x) => x.id === user?.plan)?.priceUsd ?? 0) ? 'Upgrade to ' + p.name : 'Downgrade to ' + p.name}
                   </button>
                 </div>
               ))}
@@ -1264,6 +1385,9 @@ export function WorkspaceApp({
 
             <div style={{ background: '#14141b', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: 16, marginBottom: 16 }}>
               <div style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 10 }}>Top up credits</div>
+              {billingError && (
+                <div style={{ marginBottom: 10, padding: '9px 12px', borderRadius: 12, border: '1px solid rgba(255,42,67,0.4)', color: '#ff8a97', fontSize: 12.5 }}>{billingError}</div>
+              )}
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {catalog.topUpPacks.map((pack) => (
                   <button
@@ -1272,13 +1396,22 @@ export function WorkspaceApp({
                     style={{ padding: '8px 16px', fontSize: 12.5 }}
                     onClick={async () => {
                       if (!user) return onOpenAuth();
-                      const r = await api.topup(pack.amountUsd);
-                      if (r.clientSecret && r.publishableKey && r.sessionId) setCheckoutReq({ clientSecret: r.clientSecret, publishableKey: r.publishableKey, sessionId: r.sessionId, title: '$' + pack.amountUsd + ' credits' });
-                      else if (r.checkoutUrl) window.location.href = r.checkoutUrl;
-                      else if (r.user) onUserChange(r.user);
+                      if (billingBusy) return;
+                      setBillingBusy('topup-' + pack.id);
+                      setBillingError('');
+                      try {
+                        const r = await api.topup(pack.amountUsd);
+                        if (r.clientSecret && r.publishableKey && r.sessionId) setCheckoutReq({ clientSecret: r.clientSecret, publishableKey: r.publishableKey, sessionId: r.sessionId, title: '$' + pack.amountUsd + ' credits' });
+                        else if (r.checkoutUrl) window.location.href = r.checkoutUrl;
+                        else if (r.user) onUserChange(r.user);
+                      } catch (e: any) {
+                        setBillingError(e?.message || 'Could not start checkout. Try again.');
+                      } finally {
+                        setBillingBusy('');
+                      }
                     }}
                   >
-                    {pack.label}
+                    {billingBusy === 'topup-' + pack.id ? 'Opening...' : pack.label}
                   </button>
                 ))}
               </div>

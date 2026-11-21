@@ -76,19 +76,32 @@ export function setToken(token: string) {
   else localStorage.removeItem(TOKEN_KEY);
 }
 
-export async function apiFetch<T = any>(path: string, init: RequestInit = {}): Promise<T> {
+export async function apiFetch<T = any>(path: string, init: RequestInit & { timeoutMs?: number } = {}): Promise<T> {
+  const { timeoutMs, ...rest } = init;
   const token = getToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...(init.headers as Record<string, string> | undefined)
+    ...(rest.headers as Record<string, string> | undefined)
   };
-  if (token) headers.Authorization = `Bearer ${token}`;
+  if (token) headers.Authorization = 'Bearer ' + token;
 
+  let signal = rest.signal || undefined;
+  let timedOut = false;
+  let timer: any;
+  if (timeoutMs && !signal) {
+    const c = new AbortController();
+    timer = setTimeout(() => { timedOut = true; c.abort(); }, timeoutMs);
+    signal = c.signal;
+  }
   let res: Response;
   try {
-    res = await fetch(path, { ...init, headers });
-  } catch {
+    res = await fetch(path, { ...rest, headers, signal });
+  } catch (e: any) {
+    if (timedOut) throw new Error('This is taking too long. Check your connection and try again.');
+    if (e?.name === 'AbortError') throw e;
     throw new Error('Cannot reach the Abli Code server. Check your connection and try again.');
+  } finally {
+    if (timer) clearTimeout(timer);
   }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -133,12 +146,14 @@ export const api = {
   subscribe: (planId: string) =>
     apiFetch<{ user?: UserProfile; checkoutUrl?: string; sessionId?: string; clientSecret?: string; publishableKey?: string }>('/api/billing/subscribe', {
       method: 'POST',
-      body: JSON.stringify({ planId, embedded: true })
+      body: JSON.stringify({ planId, embedded: true }),
+      timeoutMs: 30000
     }),
   verifyStripeSession: (sessionId: string) =>
     apiFetch<{ user: UserProfile }>('/api/billing/verify-session', {
       method: 'POST',
-      body: JSON.stringify({ sessionId })
+      body: JSON.stringify({ sessionId }),
+      timeoutMs: 30000
     }),
   openBillingPortal: () =>
     apiFetch<{ url: string }>('/api/billing/portal', { method: 'POST' }),
@@ -146,7 +161,8 @@ export const api = {
   topup: (amountUsd: number) =>
     apiFetch<{ user?: UserProfile; checkoutUrl?: string; sessionId?: string; clientSecret?: string; publishableKey?: string }>('/api/billing/topup', {
       method: 'POST',
-      body: JSON.stringify({ amountUsd, embedded: true })
+      body: JSON.stringify({ amountUsd, embedded: true }),
+      timeoutMs: 30000
     }),
   billingHistory: () => apiFetch<{ transactions: any[]; usage: any[] }>('/api/billing/history'),
   chat: (payload: {

@@ -1,10 +1,10 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { CheckCircle2, Github, Mail, Shield, X } from 'lucide-react';
 import { GoogleLogo } from './GoogleLogo';
 import { api, setToken, UserProfile } from '../lib/api';
 import { AbliLogo } from './AbliLogo';
 
-export function AuthModal({ open, onClose, onAuthed }: { open: boolean; onClose: () => void; onAuthed: (u: UserProfile) => void }) {
+export function AuthModal({ open, onClose, onAuthed, inline, notice }: { open: boolean; onClose: () => void; onAuthed: (u: UserProfile) => void; inline?: boolean; notice?: string }) {
   const [mode, setMode] = useState<'login' | 'signup'>(localStorage.getItem('abli_returning') ? 'login' : 'signup');
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
@@ -16,6 +16,10 @@ export function AuthModal({ open, onClose, onAuthed }: { open: boolean; onClose:
   const [err, setErr] = useState('');
   const [info, setInfo] = useState('');
   const oauthRun = useRef(0);
+
+  useEffect(() => {
+    if (notice) setErr(notice);
+  }, [notice]);
 
   if (!open) return null;
 
@@ -29,7 +33,7 @@ export function AuthModal({ open, onClose, onAuthed }: { open: boolean; onClose:
       const devCode = res.devPreviewCode || res.previewCode;
       if (devCode) {
         setPreviewCode(devCode);
-        setInfo(`Verification code generated (${devCode}). Add a Resend key in API Keys for live inbox delivery.`);
+        setInfo(`Verification code generated (${devCode}). Email delivery is not set up on this server.`);
       } else {
         setInfo('6-digit verification code sent to your email.');
       }
@@ -105,9 +109,9 @@ export function AuthModal({ open, onClose, onAuthed }: { open: boolean; onClose:
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 90, background: 'rgba(0,0,0,0.78)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+    <div style={inline ? {} : { position: 'fixed', inset: 0, zIndex: 90, background: 'rgba(0,0,0,0.78)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
       <div className="pop-in" style={{ width: '100%', maxWidth: 440, background: '#0e0e13', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 24, padding: 28, position: 'relative', }}>
-        <button onClick={onClose} style={{ position: 'absolute', top: 18, right: 18, background: 'none', border: 'none', color: '#8e8e9c', cursor: 'pointer' }}><X size={18} /></button>
+        {!inline && <button onClick={onClose} style={{ position: 'absolute', top: 18, right: 18, background: 'none', border: 'none', color: '#8e8e9c', cursor: 'pointer' }}><X size={18} /></button>}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
           <AbliLogo size={26} />
@@ -116,6 +120,9 @@ export function AuthModal({ open, onClose, onAuthed }: { open: boolean; onClose:
         <h2 style={{ margin: '0 0 18px', fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em' }}>
           {mode === 'signup' ? 'Create your account' : 'Welcome back'}
         </h2>
+        <p style={{ margin: '-10px 0 18px', fontSize: 13, color: '#9b9ba8', lineHeight: 1.5 }}>
+          {mode === 'signup' ? 'Free to start, with 5M free tokens a day on the free models.' : 'Sign in to pick up your threads where you left them.'}
+        </p>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
           <button className="btn-outline" style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 13, borderRadius: 12 }} onClick={() => handleOAuth('github')}>

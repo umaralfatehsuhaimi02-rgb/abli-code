@@ -56,8 +56,33 @@ import {
   cancelStripeSubscriptions,
   switchStripeSubscription,
   verifyStripeCheckoutSession,
-  verifyStripeWebhookEvent
+  verifyStripeWebhookEvent,
+  getActiveSubscription
 } from './lib/stripe.mjs';
+
+// Keeps a paid plan honest: if the Stripe subscription is gone (cancelled, payment failed) the user drops to Free,
+// and a new billing period resets the usage meter. Checked at most every 10 minutes per user.
+async function syncBilling(user) {
+  try {
+    if (!user || user.role === 'admin' || user.plan === 'free') return;
+    const state = await getState();
+    const key = state.settings.stripeSecretKey;
+    if (!key) return;
+    if (Date.now() - Number(user.lastBillingSyncAt || 0) < 10 * 60 * 1000) return;
+    user.lastBillingSyncAt = Date.now();
+    const sub = await getActiveSubscription(key, user.stripeCustomerId, user.email);
+    if (!sub) {
+      await applySubscription(user.id, 'free');
+      return;
+    }
+    const periodStart = sub.periodStart * 1000;
+    if (periodStart && (!user.cycleStartedAt || periodStart > Number(user.cycleStartedAt) + 60 * 1000)) {
+      user.currentCycleSpendUsd = 0;
+      user.cycleStartedAt = periodStart;
+    }
+    await saveState();
+  } catch {}
+}
 import { runChatCompletion } from './lib/providers.mjs';
 import {
   deleteCustomMcpServer,
@@ -310,6 +335,7 @@ export function createAbliServer() {
       if (pathname === '/api/auth/me' && req.method === 'GET') {
         const user = await getUserByToken(getBearer(req));
         if (!user) return json(res, 401, { error: 'Not authenticated' });
+        await syncBilling(user);
         return json(res, 200, { user: sanitizeUser(user) });
       }
 
@@ -330,8 +356,14 @@ export function createAbliServer() {
         const plan = PLANS[body.planId];
         if (!plan) return json(res, 400, { error: 'Invalid plan' });
 
+        if (!st.settings.stripeSecretKey && plan.priceUsd > 0 && process.env.ABLI_ALLOW_FREE_PLANS !== '1') {
+          return json(res, 503, { error: 'Payments are not available right now. Please try again later.' });
+        }
+
         if (st.settings.stripeSecretKey && plan.priceUsd > 0) {
-          const sw = await switchStripeSubscription({
+          let sw;
+          try {
+          sw = await switchStripeSubscription({
             secretKey: st.settings.stripeSecretKey,
             customerId: user.stripeCustomerId,
             customerEmail: user.email,
@@ -339,6 +371,9 @@ export function createAbliServer() {
             productName: 'Abli Code ' + plan.name + ' Plan',
             metadata: { kind: 'subscription', userId: user.id, planId: plan.id }
           });
+          } catch (e) {
+            return json(res, 402, { error: 'Could not switch plans. ' + (e?.message || 'The payment did not go through.') });
+          }
           if (sw.switched) {
             const switched = await applySubscription(user.id, plan.id);
             return json(res, 200, { user: switched, switched: true });
@@ -392,6 +427,9 @@ export function createAbliServer() {
           return json(res, 200, session.client_secret && !session.url ? { clientSecret: session.client_secret, sessionId: session.id, publishableKey: st.settings.stripePublishableKey } : { checkoutUrl: session.url, sessionId: session.id });
         }
 
+        if (process.env.ABLI_ALLOW_FREE_PLANS !== '1') {
+          return json(res, 503, { error: 'Payments are not available right now. Please try again later.' });
+        }
         const updated = await applyTopUp(user.id, quote.credits);
         return json(res, 200, { user: updated });
       }
@@ -410,6 +448,9 @@ export function createAbliServer() {
         st.processedStripeSessions = st.processedStripeSessions || [];
         if (st.processedStripeSessions.includes(session.id)) {
           return json(res, 200, { user: sanitizeUser(user), alreadyProcessed: true });
+        }
+        if (session.metadata?.userId && session.metadata.userId !== user.id) {
+          return json(res, 403, { error: 'This payment belongs to a different account.' });
         }
         if (session.customer) user.stripeCustomerId = String(session.customer);
         const md = session.metadata || {};
@@ -454,14 +495,16 @@ export function createAbliServer() {
         const st = await getState();
         let ev;
         if (st.settings.stripeWebhookSecret && st.settings.stripeSecretKey) {
-          ev = verifyStripeWebhookEvent(
-            st.settings.stripeSecretKey,
-            raw,
-            req.headers['stripe-signature'],
-            st.settings.stripeWebhookSecret
-          );
-        } else {
+          try {
+            ev = verifyStripeWebhookEvent(st.settings.stripeSecretKey, raw, req.headers['stripe-signature'], st.settings.stripeWebhookSecret);
+          } catch {
+            return json(res, 400, { error: 'Bad signature' });
+          }
+        } else if (process.env.ABLI_ALLOW_UNSIGNED_WEBHOOKS === '1') {
           ev = JSON.parse(raw);
+        } else {
+          // Unsigned events could be forged by anyone to get a free plan, so they are refused.
+          return json(res, 400, { error: 'Webhook signing is not configured.' });
         }
 
         if (ev.type === 'checkout.session.completed') {
@@ -475,6 +518,22 @@ export function createAbliServer() {
             if (md.kind === 'topup' && md.userId && md.amountUsd) await applyTopUp(md.userId, Number(md.amountUsd));
             st.processedStripeSessions.push(obj.id);
             await saveState();
+          }
+        }
+        if (ev.type === 'customer.subscription.deleted') {
+          const obj = ev.data?.object || {};
+          const who = st.users.find((x) => x.stripeCustomerId && x.stripeCustomerId === String(obj.customer));
+          if (who && who.plan !== 'free') await applySubscription(who.id, 'free');
+        }
+        if (ev.type === 'invoice.paid') {
+          const obj = ev.data?.object || {};
+          if (obj.billing_reason === 'subscription_cycle') {
+            const who = st.users.find((x) => x.stripeCustomerId && x.stripeCustomerId === String(obj.customer));
+            if (who) {
+              who.currentCycleSpendUsd = 0;
+              who.cycleStartedAt = Date.now();
+              await saveState();
+            }
           }
         }
         return json(res, 200, { received: true });

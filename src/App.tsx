@@ -6,6 +6,7 @@ import { AuthModal } from './components/AuthModal';
 import { LegalPages } from './components/LegalPages';
 import { CookieBanner } from './components/CookieBanner';
 import { AbliLogo } from './components/AbliLogo';
+import { SignInScreen } from './components/SignInScreen';
 
 type RouteView = 'landing' | 'app' | 'terms' | 'privacy' | 'aup' | 'cookies';
 
@@ -31,6 +32,7 @@ export function App() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [sessionChecked, setSessionChecked] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
+  const [authNotice, setAuthNotice] = useState('');
   const [cookieOpen, setCookieOpen] = useState(false);
 
   const loadCatalog = () => api.getCatalog().then(setCatalog).catch(() => {});
@@ -62,20 +64,28 @@ export function App() {
         .catch(() => {});
     }
 
-    if (window.location.hash.includes('access_token=')) {
-      const params = new URLSearchParams(window.location.hash.replace(/^#/, '').split('?')[0]);
-      const accessToken = params.get('access_token');
-      if (accessToken) {
-        api
-          .exchangeSupabaseToken(accessToken)
-          .then((res) => {
-            setToken(res.token);
-            setUser(res.user);
-            window.location.hash = '#/app';
-            setRoute('app');
-          })
-          .catch(() => {});
-      }
+    // Supabase puts its result at the very end of the address, which can come after our own "#/app" part.
+    const hashNow = window.location.hash;
+    const tokenMatch = /[#&?]access_token=([^&]+)/.exec(hashNow);
+    const problemMatch = /[#&?]error_description=([^&]+)/.exec(hashNow);
+    if (problemMatch) {
+      setAuthNotice(decodeURIComponent(problemMatch[1].replace(/\+/g, ' ')));
+      setAuthOpen(true);
+      window.location.hash = '#/app';
+    } else if (tokenMatch) {
+      const accessToken = decodeURIComponent(tokenMatch[1]);
+      api
+        .exchangeSupabaseToken(accessToken)
+        .then((res) => {
+          setToken(res.token);
+          setUser(res.user);
+          window.location.hash = '#/app';
+          setRoute('app');
+        })
+        .catch((e) => {
+          setAuthNotice((e && e.message) || 'Sign-in could not be completed. Try again.');
+          window.location.hash = '#/app';
+        });
     }
 
     const onHash = () => setRoute(resolveRoute());
@@ -139,13 +149,23 @@ export function App() {
       )}
 
       {appRequiresLogin && (
-        <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: '#060608' }}>
-          <div style={{ color: '#8e8e9c', fontSize: 14 }}>Sign in to open Abli Code.</div>
-        </div>
+        <SignInScreen onBack={IS_DESKTOP ? undefined : () => navigate('landing')}>
+          <AuthModal
+            inline
+            open
+            notice={authNotice}
+            onClose={() => {}}
+            onAuthed={(u) => {
+              setUser(u);
+              navigate('app');
+            }}
+          />
+        </SignInScreen>
       )}
 
       <AuthModal
-        open={authOpen || appRequiresLogin}
+        open={authOpen && !appRequiresLogin}
+        notice={authNotice}
         onClose={() => {
           setAuthOpen(false);
           if (appRequiresLogin) navigate('landing');

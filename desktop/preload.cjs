@@ -10,5 +10,15 @@ contextBridge.exposeInMainWorld('abliDesktop', {
   pickFile: () => ipcRenderer.invoke('dialog:pickFile'),
   runComputerTool: (toolName, args) => ipcRenderer.invoke('computer:invoke', { toolName, args }),
   runReaTool: (toolName, args) => ipcRenderer.invoke('rea:invoke', { toolName, args }),
-  openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url)
+  openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
+  local: {
+    check: () => ipcRenderer.invoke('local:check'),
+    status: () => ipcRenderer.invoke('local:status'),
+    install: (id) => ipcRenderer.invoke('local:install', id),
+    cancel: () => ipcRenderer.invoke('local:cancel'),
+    start: (id) => ipcRenderer.invoke('local:start', id),
+    stop: () => ipcRenderer.invoke('local:stop'),
+    remove: (id) => ipcRenderer.invoke('local:remove', id),
+    endpoint: () => ipcRenderer.invoke('local:endpoint')
+  }
 });

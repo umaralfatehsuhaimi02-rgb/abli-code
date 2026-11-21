@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { executeComputerTool } from '../lib/computer-control.mjs';
 import { executeReaTool } from '../mcp/rea-server.mjs';
+import { registerLocal } from './local.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.join(__dirname, '..');
@@ -146,9 +147,18 @@ function createWindow() {
       }
     } catch {}
   });
+  // Card checks, wallets and Link open small popups. They have to stay inside the app, or the payment form waits forever.
+  const PAYMENT_POPUP_HOSTS = [/(^|\.)stripe\.com$/, /(^|\.)stripe\.network$/, /(^|\.)link\.com$/, /(^|\.)google\.com$/, /(^|\.)paypal\.com$/, /(^|\.)hcaptcha\.com$/];
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     try {
-      if (/^https?:\/\//i.test(url)) shell.openExternal(url);
+      const u = new URL(url);
+      if (url === 'about:blank' || (u.protocol === 'https:' && PAYMENT_POPUP_HOSTS.some((re) => re.test(u.hostname)))) {
+        return {
+          action: 'allow',
+          overrideBrowserWindowOptions: { parent: mainWindow, modal: true, width: 520, height: 720, autoHideMenuBar: true, backgroundColor: '#ffffff', webPreferences: { contextIsolation: true, nodeIntegration: false } }
+        };
+      }
+      if (/^https?:$/.test(u.protocol)) shell.openExternal(url);
     } catch {}
     return { action: 'deny' };
   });
@@ -196,6 +206,8 @@ app.whenReady().then(async () => {
     await shell.openExternal(url);
     return { ok: true };
   });
+
+  registerLocal(handle);
 
   createWindow();
 });

@@ -33,6 +33,8 @@ Grab the latest build from the [Releases page](https://github.com/umaralfatehsuh
 
 - **Abliterated models in one place.** Switch models mid-thread from a single picker.
 - **Desktop and web.** Same account, same threads, same look.
+- **Abli Mini.** Abliterated 1.58-bit models that run on your own PC, with a built-in check for what your device can handle.
+- **MCP in one paste.** Drop in a standard `mcpServers` JSON block and the servers are added.
 - **A real workspace.** Projects, recents, pinned and archived threads, rename, duplicate, export to Markdown.
 - **Chat that works the way you expect.** Copy, edit and resend, regenerate, stop, markdown with copyable code blocks, photo and file attachments.
 - **Sign in anywhere.** Google, GitHub, or email with a 6-digit code. On desktop, sign-in opens your default browser.
@@ -55,6 +57,21 @@ Grab the latest build from the [Releases page](https://github.com/umaralfatehsuh
 Anything starting with **Abli** is abliterated. Within a family, a higher number is a smarter model. Flash is for speed, Coder is for code.
 
 Muse Spark Open: Built with Muse Spark Open.
+
+## Abli Mini
+
+Run abliterated 1.58-bit ternary models (Bonsai 2, PTQ1_0) on your own computer. Private, free, and offline once installed. Open **Abli Mini** in the desktop app and it checks your processor, memory, graphics card and disk, then tells you which models your PC can run.
+
+| Model | Size | Download | Good for |
+|---|---|---|---|
+| Abli Mini Lite | 2B | about 0.45 GB | Tiny and instant, quick chat |
+| Abli Mini Flash | 4B | about 0.95 GB | Fast and capable, everyday chat |
+| Abli Mini Coder | 9B | about 2.0 GB | Writing and fixing code |
+| Abli Mini Coder 2 | 27B | about 5.7 GB | The smartest local model, hard problems |
+
+Coder 2 is a fully abliterated build. Lite, Flash and Coder use a tiny abliteration adapter on top of the ternary base, so they are research-grade: they answer without refusing, and the 9B gives up a few points of general accuracy for it.
+
+The engine and models download once, with a progress bar, and stay on your PC. Nothing you type in Abli Mini leaves it. Needs the desktop app on Windows. Speeds depend on your hardware.
 
 ## Plans
 

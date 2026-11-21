@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Archive, ArchiveRestore, BookOpen, ChevronDown, ChevronRight, Copy, CreditCard, Download, Folder, FolderPlus, LogOut,
+  Archive, ArchiveRestore, BookOpen, ChevronDown, Cpu, ChevronRight, Copy, CreditCard, Download, Folder, FolderPlus, LogOut,
   MoreHorizontal, PanelLeft, Pencil, Pin, PinOff, Plug, Plus, Search, Trash2, X
 } from 'lucide-react';
 import { PromptLibrary } from './PromptLibrary';
+import { Portal } from './Portal';
 import { ModelShape } from './ModelShape';
 
 export interface SidebarThread {
@@ -30,6 +31,7 @@ interface SidebarProps {
   onExport: (id: string) => void;
   onUsePrompt: (text: string) => void;
   onOpenMcp: () => void;
+  onOpenLocal?: () => void;
   onOpenBilling: () => void;
   onLogout: () => void;
   onOpenAuth: () => void;
@@ -284,6 +286,7 @@ export function Sidebar(p: SidebarProps) {
         <NavRow icon={<Plus size={15} />} label="New thread" hint="Ctrl N" onClick={() => p.onNew()} />
         <NavRow icon={<BookOpen size={15} />} label="Prompts" onClick={() => setPromptsOpen(true)} />
         <NavRow icon={<Plug size={15} />} label="MCP servers" onClick={p.onOpenMcp} />
+        {p.onOpenLocal && <NavRow icon={<Cpu size={15} />} label="Abli Mini" onClick={p.onOpenLocal} />}
         <NavRow icon={<CreditCard size={15} />} label="Plans and credits" onClick={p.onOpenBilling} />
       </div>
 
@@ -425,7 +428,7 @@ export function Sidebar(p: SidebarProps) {
       </div>
 
       {menu && menuThread && (
-        <>
+        <Portal>
           <div onClick={() => setMenu(null)} onContextMenu={(e) => { e.preventDefault(); setMenu(null); }} style={{ position: 'fixed', inset: 0, zIndex: 60 }} />
           <div
             className="pop-in"
@@ -450,11 +453,11 @@ export function Sidebar(p: SidebarProps) {
               </button>
             ))}
           </div>
-        </>
+        </Portal>
       )}
 
       {confirm && (
-        <div onClick={() => setConfirm(null)} style={{ position: 'fixed', inset: 0, zIndex: 90, background: 'rgba(0,0,0,0.75)', display: 'grid', placeItems: 'center' }}>
+        <Portal><div onClick={() => setConfirm(null)} style={{ position: 'fixed', inset: 0, zIndex: 90, background: 'rgba(0,0,0,0.75)', display: 'grid', placeItems: 'center' }}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: 380, maxWidth: '92vw', background: '#111116', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, padding: 24 }}>
             <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>
               {confirm.kind === 'signout' ? 'Sign out of Abli Code?' : 'Delete this thread?'}
@@ -473,10 +476,10 @@ export function Sidebar(p: SidebarProps) {
               </button>
             </div>
           </div>
-        </div>
+        </div></Portal>
       )}
 
-      <PromptLibrary open={promptsOpen} onClose={() => setPromptsOpen(false)} onUse={p.onUsePrompt} />
+      <Portal><PromptLibrary open={promptsOpen} onClose={() => setPromptsOpen(false)} onUse={p.onUsePrompt} /></Portal>
     </aside>
   );
 }
