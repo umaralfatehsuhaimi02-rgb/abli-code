@@ -49,7 +49,7 @@ import {
   registerWithEmail,
   sendVerificationCode
 } from './lib/auth.mjs';
-import { DAILY_FREE_TOKEN_LIMIT, PLANS, PLATFORM_PRESETS, TOPUP_PACKS, topUpQuote } from './lib/pricing.mjs';
+import { DAILY_FREE_TOKEN_LIMIT, PLANS, PLATFORM_PRESETS, TOPUP_PACKS, sellPrices, topUpQuote } from './lib/pricing.mjs';
 import {
   createStripeCheckoutSession,
   createStripePortalSession,
@@ -110,8 +110,8 @@ function getBearer(req) {
 
 function maskKey(k = '') {
   if (!k) return '';
-  if (k.length <= 8) return 'â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢';
-  return `${k.slice(0, 4)}â€¢â€¢â€¢â€¢${k.slice(-4)}`;
+  if (k.length <= 8) return '********';
+  return `${k.slice(0, 4)}****${k.slice(-4)}`;
 }
 
 function sanitizePublicPlan(plan) {
@@ -189,6 +189,8 @@ export function createAbliServer() {
           platforms: PLATFORM_PRESETS,
           models: st.models.map((m) => ({
             ...m,
+            inputCostPer1M: sellPrices(m).input,
+            outputCostPer1M: sellPrices(m).output,
             providerReady: Boolean(st.providers.find((p) => p.id === m.platform && (p.apiKey || p.id === 'ollama')))
           })),
           supabase: {
@@ -462,16 +464,16 @@ export function createAbliServer() {
           for (const key of ['appUrl', 'contactEmail', 'adminEmail', 'supabaseUrl', 'supabasePublishableKey', 'emailFrom']) {
             if (typeof body.settings[key] === 'string') st.settings[key] = body.settings[key].trim();
           }
-          if (body.settings.supabaseServiceRoleKey && !body.settings.supabaseServiceRoleKey.includes('â€¢â€¢â€¢â€¢')) {
+          if (body.settings.supabaseServiceRoleKey && !body.settings.supabaseServiceRoleKey.includes('****')) {
             st.settings.supabaseServiceRoleKey = body.settings.supabaseServiceRoleKey.trim();
           }
-          if (body.settings.resendApiKey && !body.settings.resendApiKey.includes('â€¢â€¢â€¢â€¢')) {
+          if (body.settings.resendApiKey && !body.settings.resendApiKey.includes('****')) {
             st.settings.resendApiKey = body.settings.resendApiKey.trim();
           }
-          if (body.settings.stripeSecretKey && !body.settings.stripeSecretKey.includes('â€¢â€¢â€¢â€¢')) {
+          if (body.settings.stripeSecretKey && !body.settings.stripeSecretKey.includes('****')) {
             st.settings.stripeSecretKey = body.settings.stripeSecretKey.trim();
           }
-          if (body.settings.stripeWebhookSecret && !body.settings.stripeWebhookSecret.includes('â€¢â€¢â€¢â€¢')) {
+          if (body.settings.stripeWebhookSecret && !body.settings.stripeWebhookSecret.includes('****')) {
             st.settings.stripeWebhookSecret = body.settings.stripeWebhookSecret.trim();
           }
         }
@@ -482,7 +484,7 @@ export function createAbliServer() {
             if (target) {
               if (typeof incoming.baseUrl === 'string') target.baseUrl = incoming.baseUrl.trim();
               if (typeof incoming.enabled === 'boolean') target.enabled = incoming.enabled;
-              if (incoming.apiKey && !incoming.apiKey.includes('â€¢â€¢â€¢â€¢')) {
+              if (incoming.apiKey && !incoming.apiKey.includes('****')) {
                 target.apiKey = incoming.apiKey.trim();
                 target.enabled = true;
               }
@@ -503,7 +505,7 @@ export function createAbliServer() {
         const st = await getState();
         const provider = st.providers.find((p) => p.id === body.providerId);
         if (!provider) return json(res, 404, { error: 'Provider not found' });
-        const key = body.apiKey && !body.apiKey.includes('â€¢â€¢â€¢â€¢') ? body.apiKey : provider.apiKey;
+        const key = body.apiKey && !body.apiKey.includes('****') ? body.apiKey : provider.apiKey;
         const base = (body.baseUrl || provider.baseUrl || '').replace(/\/$/, '');
         if (!base) return json(res, 400, { error: 'Base URL required' });
         try {

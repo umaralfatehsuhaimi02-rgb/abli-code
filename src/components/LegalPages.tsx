@@ -268,13 +268,19 @@ function buildDocs(email: string): Record<Section, Doc> {
           ]
         },
         {
-          h: '3. Your choices',
+          h: '3. Desktop app',
+          p: [
+            `By downloading and installing the Abli Code desktop app you accept the essential local storage listed above (your session token and basic settings). The desktop app therefore does not show a cookie banner. It does not use advertising or tracking storage.`
+          ]
+        },
+        {
+          h: '4. Your choices',
           p: [
             `You can change your preference at any time with "Cookie settings" in the footer, and you can clear local storage or cookies in your browser settings. Blocking strictly necessary storage will stop sign-in from working.`
           ]
         },
         {
-          h: '4. Contact',
+          h: '5. Contact',
           p: [`Questions about this policy: ${email}.`]
         }
       ]

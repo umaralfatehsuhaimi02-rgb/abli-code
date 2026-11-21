@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, nativeImage, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, nativeImage, nativeTheme, session, shell } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createAbliServer } from '../server.mjs';
@@ -10,6 +10,15 @@ const ROOT_DIR = path.join(__dirname, '..');
 const ICON_PATH = path.join(ROOT_DIR, 'public', process.platform === 'win32' ? 'icon.ico' : 'icon.png');
 
 app.setName('Abli Code');
+nativeTheme.themeSource = 'dark';
+
+// Write browser storage (session token, preferences) to disk often, so a hard close never loses the login.
+setInterval(() => {
+  try { session.defaultSession.flushStorageData(); } catch {}
+}, 4000);
+app.on('before-quit', () => {
+  try { session.defaultSession.flushStorageData(); } catch {}
+});
 if (process.platform === 'win32') {
   app.setAppUserModelId('com.ablicode.desktop');
 }
@@ -42,10 +51,9 @@ function createWindow() {
     title: 'Abli Code',
     icon: appIcon.isEmpty() ? ICON_PATH : appIcon,
     backgroundColor: '#060608',
-    frame: false,
-    titleBarStyle: 'hidden',
+    autoHideMenuBar: true,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.mjs'),
+      preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false
     }

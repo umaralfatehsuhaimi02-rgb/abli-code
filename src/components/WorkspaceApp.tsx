@@ -1,10 +1,11 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowUp, Check, ChevronDown, Cpu, CreditCard, FolderOpen,
   KeyRound, LogOut, Maximize2, Minimize2, Monitor, Plus, Plug,
   Settings, Sparkles, Trash2, Wrench, X
 } from 'lucide-react';
 import { api, CatalogResponse, ModelConfig, UserProfile } from '../lib/api';
+import { ShapeArt } from './ShapeArt';
 import { AbliLogo } from './AbliLogo';
 
 interface ThreadMessage {
@@ -45,6 +46,10 @@ function loadSavedThreads(defaultModelSlug: string): Thread[] {
       updatedAt: new Date().toISOString()
     }
   ];
+}
+
+function fmtTok(n: number) {
+  return n >= 1_000_000 ? `${n / 1_000_000}M` : `${Math.round(n / 1000)}K`;
 }
 
 export function WorkspaceApp({
@@ -227,7 +232,7 @@ export function WorkspaceApp({
 
     const nextMessages = [...activeThread.messages, userMsg];
     const nextTitle =
-      activeThread.messages.length === 0 ? text.slice(0, 42) + (text.length > 42 ? 'â€¦' : '') : activeThread.title;
+      activeThread.messages.length === 0 ? text.slice(0, 42) + (text.length > 42 ? '...' : '') : activeThread.title;
 
     updateActiveThread((t) => ({
       ...t,
@@ -331,8 +336,8 @@ export function WorkspaceApp({
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '0 14px',
-          borderBottom: '1px solid rgba(255,255,255,0.07)',
-          background: 'rgba(10,10,14,0.92)',
+          borderBottom: '1px solid rgba(255,255,255,0.14)',
+          background: '#060608',
           flexShrink: 0
         }}
       >
@@ -393,7 +398,7 @@ export function WorkspaceApp({
             style={{ padding: '6px 12px', fontSize: 12, color: '#e4e4ec', display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
           >
             <CreditCard size={13} color="#ff2a43" />
-            {user ? `${user.plan.toUpperCase()} Â/ $${user.creditBalanceUsd.toFixed(2)}` : 'Plans'}
+            {user ? `${user.plan.toUpperCase()} / $${user.creditBalanceUsd.toFixed(2)}` : 'Plans'}
           </button>
 
           <button
@@ -411,13 +416,6 @@ export function WorkspaceApp({
             </button>
           )}
 
-          {isDesktop && (
-            <div style={{ display: 'flex', gap: 5, marginLeft: 6 }}>
-              <button onClick={() => desktopApi.minimize()} className="glass-pill" style={{ width: 28, height: 28, display: 'grid', placeItems: 'center', color: '#a1a1aa', cursor: 'pointer' }}><Minimize2 size={12} /></button>
-              <button onClick={() => desktopApi.maximize()} className="glass-pill" style={{ width: 28, height: 28, display: 'grid', placeItems: 'center', color: '#a1a1aa', cursor: 'pointer' }}><Maximize2 size={12} /></button>
-              <button onClick={() => desktopApi.close()} className="glass-pill" style={{ width: 28, height: 28, display: 'grid', placeItems: 'center', color: '#ff6b7d', cursor: 'pointer' }}><X size={13} /></button>
-            </div>
-          )}
         </div>
       </header>
 
@@ -507,7 +505,7 @@ export function WorkspaceApp({
                     </span>
                     <span style={{ fontWeight: 600, color: '#fff' }}>
                       {freeModelStats
-                        ? `${Math.round(freeModelStats.used / 1000)}K / 750K`
+                        ? `${fmtTok(freeModelStats.used)} / ${fmtTok((freeModelStats as any).limit)}`
                         : user.plan === 'free'
                           ? `$${user.creditBalanceUsd.toFixed(2)} credits`
                           : `${user.planUsagePercent.toFixed(0)}%`}
@@ -518,7 +516,7 @@ export function WorkspaceApp({
                       style={{
                         height: '100%',
                         borderRadius: 999,
-                        background: 'linear-gradient(90deg, #ff2a43, #ff6b7d)',
+                        background: '#ff2a43',
                         width: `${
                           freeModelStats
                             ? Math.min(100, (freeModelStats.used / freeModelStats.limit) * 100)
@@ -561,9 +559,9 @@ export function WorkspaceApp({
               {activeThread?.messages.length === 0 ? (
                 <div className="fade-up" style={{ textAlign: 'center', paddingTop: '8vh', paddingBottom: 32 }}>
                   <div style={{ display: 'inline-flex', marginBottom: 18 }}>
-                    <AbliLogo size={48} />
+                    <ShapeArt size={190} />
                   </div>
-                  <h1 style={{ fontSize: 28, fontWeight: 800, margin: '0 0 8px', letterSpacing: '-0.025em' }}>
+                  <h1 style={{ fontSize: 40, fontWeight: 900, margin: '0 0 10px', letterSpacing: '-0.045em' }}>
                     What are we building today?
                   </h1>
                   <p style={{ fontSize: 14.5, color: '#8e8e9c', margin: '0 auto 28px', maxWidth: 460 }}>
@@ -727,12 +725,11 @@ export function WorkspaceApp({
                     border: '1px solid rgba(255,255,255,0.12)',
                     borderRadius: 20,
                     padding: 10,
-                    boxShadow: '0 24px 60px rgba(0,0,0,0.75)',
                     zIndex: 30
                   }}
                 >
                   {[
-                    { label: 'Free Models Â/ 750K/day each', items: freeModels },
+                    { label: 'Free models', items: freeModels },
                     { label: 'Cheap & Fast', items: cheapModels },
                     { label: 'Flagship', items: premiumModels }
                   ].map((group) => (
@@ -771,7 +768,7 @@ export function WorkspaceApp({
                               </div>
                               <div style={{ fontSize: 11, color: freeExhausted ? '#ff6b7d' : '#8e8e9c' }}>
                                 {freeInfo
-                                  ? `${Math.round(freeInfo.used / 1000)}K / 750K used today`
+                                  ? `${fmtTok(freeInfo.used)} / ${fmtTok((freeInfo as any).limit)} used today`
                                   : m.description}
                               </div>
                             </div>
@@ -810,7 +807,6 @@ export function WorkspaceApp({
                     border: '1px solid rgba(255,255,255,0.12)',
                     borderRadius: 20,
                     padding: 12,
-                    boxShadow: '0 24px 60px rgba(0,0,0,0.75)',
                     zIndex: 30
                   }}
                 >
@@ -851,7 +847,7 @@ export function WorkspaceApp({
                         >
                           <div>
                             <div style={{ fontSize: 13, fontWeight: 600 }}>{s.name}</div>
-                            <div style={{ fontSize: 11, color: '#8e8e9c' }}>{toolCount} tools Â/ {s.transport}</div>
+                            <div style={{ fontSize: 11, color: '#8e8e9c' }}>{toolCount} tools / {s.transport}</div>
                           </div>
                           <div
                             style={{
@@ -879,7 +875,6 @@ export function WorkspaceApp({
                   border: '1px solid rgba(255,255,255,0.12)',
                   borderRadius: 22,
                   padding: '12px 14px',
-                  boxShadow: '0 16px 48px rgba(0,0,0,0.45)'
                 }}
               >
                 <textarea
@@ -1044,7 +1039,7 @@ export function WorkspaceApp({
 
       {/* Add / Manage MCP Servers Modal */}
       {mcpModalOpen && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 90, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', display: 'grid', placeItems: 'center', padding: 16 }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 90, background: 'rgba(0,0,0,0.75)', display: 'grid', placeItems: 'center', padding: 16 }}>
           <div className="pop-in" style={{ width: '100%', maxWidth: 540, background: '#0e0e13', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 22, padding: 24 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>MCP Servers &amp; Tools</h3>
@@ -1102,7 +1097,7 @@ export function WorkspaceApp({
                 <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: 12, background: '#14141a', border: '1px solid rgba(255,255,255,0.07)' }}>
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 600 }}>{s.name}</div>
-                    <div style={{ fontSize: 11, color: '#8e8e9c' }}>{s.transport} Â/ {s.builtIn ? 'Built-in' : 'Custom'}</div>
+                    <div style={{ fontSize: 11, color: '#8e8e9c' }}>{s.transport} / {s.builtIn ? 'Built-in' : 'Custom'}</div>
                   </div>
                   {!s.builtIn && (
                     <button
@@ -1124,13 +1119,13 @@ export function WorkspaceApp({
 
       {/* Plans & Stripe Top-Up Modal (Undisclosed backend cap) */}
       {billingOpen && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 90, background: 'rgba(0,0,0,0.78)', backdropFilter: 'blur(8px)', display: 'grid', placeItems: 'center', padding: 16 }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 90, background: 'rgba(0,0,0,0.78)', display: 'grid', placeItems: 'center', padding: 16 }}>
           <div className="pop-in" style={{ width: '100%', maxWidth: 820, maxHeight: '90vh', overflowY: 'auto', background: '#0e0e13', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 24, padding: 26 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>Plans &amp; Credit Top-Ups</h3>
                 <p style={{ margin: '4px 0 0', fontSize: 13, color: '#8e8e9c' }}>
-                  Current plan: <strong style={{ color: '#fff' }}>{user?.plan.toUpperCase() || 'FREE'}</strong> Â/ Credits: <strong style={{ color: '#fff' }}>${(user?.creditBalanceUsd || 0).toFixed(2)}</strong>
+                  Current plan: <strong style={{ color: '#fff' }}>{user?.plan.toUpperCase() || 'FREE'}</strong> / Credits: <strong style={{ color: '#fff' }}>${(user?.creditBalanceUsd || 0).toFixed(2)}</strong>
                 </p>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>

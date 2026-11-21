@@ -68,7 +68,10 @@ export function getToken() {
 }
 
 export function setToken(token: string) {
-  if (token) localStorage.setItem(TOKEN_KEY, token);
+  if (token) {
+    localStorage.setItem(TOKEN_KEY, token);
+    localStorage.setItem('abli_returning', '1');
+  }
   else localStorage.removeItem(TOKEN_KEY);
 }
 

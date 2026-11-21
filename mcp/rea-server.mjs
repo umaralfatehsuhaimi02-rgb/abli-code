@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Abli Code — Stock REA (Reverse Engineer Anything) MCP Server
+ * Abli Code - Stock REA (Reverse Engineer Anything) MCP Server
  * Dual-mode:
  *   1) Standard MCP stdio JSON-RPC 2.0 server (`node mcp/rea-server.mjs`)
  *   2) Direct library export (`REA_TOOLS`, `executeReaTool`) for Abli Code Server, Desktop & Terminal

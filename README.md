@@ -20,4 +20,4 @@ npm run desktop  # Launches the Electron Desktop App
 ```
 
 ## License
-MIT License — Copyright (c) 2026 Umar Al-Fateh Suhaimi (`umaralfatehsuhaimi02@gmail.com`)
+MIT License - Copyright (c) 2026 Umar Al-Fateh Suhaimi (`umaralfatehsuhaimi02@gmail.com`)

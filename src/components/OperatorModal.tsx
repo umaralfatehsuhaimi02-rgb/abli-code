@@ -55,8 +55,8 @@ export function OperatorModal({ open, onClose, onSaved }: { open: boolean; onClo
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 95, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div className="pop-in" style={{ width: '100%', maxWidth: 900, maxHeight: '90vh', overflowY: 'auto', background: '#0e0e13', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 24, padding: 26, boxShadow: '0 28px 80px rgba(0,0,0,0.7)' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 95, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div className="pop-in" style={{ width: '100%', maxWidth: 900, maxHeight: '90vh', overflowY: 'auto', background: '#0e0e13', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 24, padding: 26, }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
           <div>
             <div style={{ fontSize: 12, color: '#ff2a43', fontWeight: 600, marginBottom: 2 }}>API Keys &amp; Integrations</div>

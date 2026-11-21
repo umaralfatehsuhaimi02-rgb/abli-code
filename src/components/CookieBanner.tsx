@@ -24,7 +24,14 @@ export function CookieBanner({
   useEffect(() => {
     try {
       const saved = localStorage.getItem(CONSENT_KEY);
-      if (!saved) setVisible(true);
+      if (!saved) {
+        if ((window as any).abliDesktop?.isDesktop) {
+          // Installing the desktop app counts as accepting essential storage, so no banner.
+          localStorage.setItem(CONSENT_KEY, JSON.stringify({ necessary: true, analytics: false, savedAt: new Date().toISOString() }));
+        } else {
+          setVisible(true);
+        }
+      }
     } catch {
       setVisible(true);
     }
@@ -55,11 +62,9 @@ export function CookieBanner({
         margin: '0 auto',
         zIndex: 80,
         background: 'rgba(14,14,19,0.95)',
-        backdropFilter: 'blur(16px)',
         border: '1px solid rgba(255,255,255,0.12)',
         borderRadius: 20,
         padding: '18px 20px',
-        boxShadow: '0 24px 60px rgba(0,0,0,0.75)'
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 14 }}>

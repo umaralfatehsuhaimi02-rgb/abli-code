@@ -5,7 +5,7 @@ import { api, setToken, UserProfile } from '../lib/api';
 import { AbliLogo } from './AbliLogo';
 
 export function AuthModal({ open, onClose, onAuthed }: { open: boolean; onClose: () => void; onAuthed: (u: UserProfile) => void }) {
-  const [mode, setMode] = useState<'login' | 'signup'>('signup');
+  const [mode, setMode] = useState<'login' | 'signup'>(localStorage.getItem('abli_returning') ? 'login' : 'signup');
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
@@ -105,8 +105,8 @@ export function AuthModal({ open, onClose, onAuthed }: { open: boolean; onClose:
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 90, background: 'rgba(0,0,0,0.78)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div className="pop-in" style={{ width: '100%', maxWidth: 440, background: '#0e0e13', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 24, padding: 28, position: 'relative', boxShadow: '0 24px 70px rgba(0,0,0,0.65)' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 90, background: 'rgba(0,0,0,0.78)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div className="pop-in" style={{ width: '100%', maxWidth: 440, background: '#0e0e13', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 24, padding: 28, position: 'relative', }}>
         <button onClick={onClose} style={{ position: 'absolute', top: 18, right: 18, background: 'none', border: 'none', color: '#8e8e9c', cursor: 'pointer' }}><X size={18} /></button>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
