@@ -11,6 +11,7 @@ type RouteView = 'landing' | 'app' | 'terms' | 'privacy' | 'aup' | 'cookies';
 
 // The desktop app has no marketing site: it only ever shows the sign-in gate or the workspace.
 const IS_DESKTOP = !!(window as any).abliDesktop?.isDesktop;
+if (IS_DESKTOP) document.body.classList.add('is-desktop');
 
 function resolveRoute(): RouteView {
   const hash = window.location.hash.replace(/^#/, '');

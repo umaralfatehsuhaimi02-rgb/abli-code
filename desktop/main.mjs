@@ -118,6 +118,8 @@ function createWindow() {
     icon: appIcon.isEmpty() ? ICON_PATH : appIcon,
     backgroundColor: '#060608',
     autoHideMenuBar: true,
+    titleBarStyle: 'hidden',
+    titleBarOverlay: { color: '#060608', symbolColor: '#ffffff', height: 36 },
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,

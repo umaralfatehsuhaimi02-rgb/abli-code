@@ -266,3 +266,9 @@ div[style*="position: fixed"][style*="z-index: 90"]>div,div[style*="position: fi
 main{animation:overlayIn .4s ease both}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;animation-delay:0s!important;transition-duration:.001ms!important}}
 .att-chip{animation:cardIn .28s cubic-bezier(.2,.8,.2,1) both}
+
+/* desktop window chrome: native buttons only, no title text */
+#desktop-drag{display:none}
+body.is-desktop #desktop-drag{display:block;position:fixed;top:0;left:env(titlebar-area-x,0px);width:env(titlebar-area-width,calc(100% - 140px));height:36px;-webkit-app-region:drag;z-index:1000}
+body.is-desktop #root{padding-top:36px;box-sizing:border-box}
+body.is-desktop #root>div[style*="height: 100vh"]{height:calc(100vh - 36px)!important}

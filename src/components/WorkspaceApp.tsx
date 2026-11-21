@@ -116,7 +116,7 @@ export function WorkspaceApp({
   // Tools & MCP state
   const [mcpServers, setMcpServers] = useState<any[]>([]);
   const [mcpTools, setMcpTools] = useState<any[]>([]);
-  const [enabledServers, setEnabledServers] = useState<string[]>(['stock-rea', 'stock-computer']);
+  const [enabledServers, setEnabledServers] = useState<string[]>(['stock-rea']);
   const [newMcp, setNewMcp] = useState({ name: '', transport: 'stdio', command: 'npx', args: '', url: '' });
   const [mcpBusy, setMcpBusy] = useState(false);
 
@@ -198,6 +198,39 @@ export function WorkspaceApp({
     setThreads((prev) => [t, ...prev]);
     setActiveThreadId(t.id);
     setChatError('');
+  };
+
+  const duplicateThread = (id: string) => {
+    const src = threads.find((t) => t.id === id);
+    if (!src) return;
+    const copy: Thread = {
+      ...src,
+      id: crypto.randomUUID(),
+      title: 'Copy of ' + src.title,
+      messages: src.messages.map((m) => ({ ...m, id: crypto.randomUUID() })),
+      updatedAt: new Date().toISOString()
+    };
+    setThreads((prev) => [copy, ...prev]);
+    setActiveThreadId(copy.id);
+  };
+
+  const exportThread = (id: string) => {
+    const src = threads.find((t) => t.id === id);
+    if (!src) return;
+    const lines: string[] = ['# ' + src.title, ''];
+    for (const m of src.messages) {
+      lines.push('## ' + (m.role === 'user' ? 'You' : 'Abli Code'), '', m.content || '', '');
+      for (const a of m.attachments || []) lines.push('_Attachment: ' + a.name + '_', '');
+    }
+    const blob = new Blob([lines.join(String.fromCharCode(10))], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = (src.title.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').slice(0, 60) || 'thread') + '.md';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   const startThread = (folder?: string) => {
@@ -318,7 +351,7 @@ export function WorkspaceApp({
         modelSlug: activeModel.slug,
         messages: nextMessages.map((m, i) => toApiMessage(m, i === nextMessages.length - 1)),
         enableTools: enabledServers.length > 0,
-        computerControlEnabled: enabledServers.includes('stock-computer'),
+        computerControlEnabled: false,
         enabledServers,
         workspacePath: activeThread.workspacePath
       });
@@ -420,14 +453,16 @@ export function WorkspaceApp({
                 percent: user.plan === 'free' ? 0 : Math.min(100, user.planUsagePercent)
               };
             })()}
-            computerOpen={computerDrawerOpen}
+            onDuplicate={duplicateThread}
+            onExport={exportThread}
+            onUsePrompt={(t) => setInput(t)}
             onSelect={(id) => { setActiveThreadId(id); setChatError(''); }}
             onNew={(folder) => startThread(folder)}
             onAddProject={addProject}
             onDelete={deleteThread}
             onRename={(id, title) => setThreads((prev) => prev.map((t) => (t.id === id ? { ...t, title } : t)))}
             onOpenMcp={() => setMcpModalOpen(true)}
-            onToggleComputer={() => setComputerDrawerOpen((v) => !v)}
+            
             onOpenBilling={() => { setBillingOpen(true); refreshBillingHistory(); }}
             onLogout={onLogout}
             onOpenAuth={onOpenAuth}
@@ -470,14 +505,14 @@ export function WorkspaceApp({
                     What are we building today?
                   </h1>
                   <p style={{ fontSize: 14.5, color: '#8e8e9c', margin: '0 auto 28px', maxWidth: 460 }}>
-                    Switch between free and paid models below, toggle Computer Control or MCP tools, and work directly in your folder.
+                    Switch between Abli Flash and Abli Coder models below and work directly in your folder.
                   </p>
 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, textAlign: 'left' }}>
                     {[
                       'Inspect the active folder and summarize the project architecture',
                       'Find bugs or type errors in this codebase and propose clean fixes',
-                      'Use Computer Control to list running processes and check system health',
+                      'Review the recent changes in this folder and write a short summary',
                       'Design and scaffold a clean-room API service with tests'
                     ].map((starter) => (
                       <button
@@ -867,34 +902,6 @@ export function WorkspaceApp({
                       <ChevronDown size={13} color="#8e8e9c" />
                     </button>
 
-                    <button
-                      onClick={() => {
-                        setModelMenuOpen(false);
-                        setToolsMenuOpen((v) => !v);
-                      }}
-                      className="glass-pill"
-                      style={{
-                        padding: '6px 12px',
-                        fontSize: 12.5,
-                        color: enabledServers.length > 0 ? '#fff' : '#8e8e9c',
-                        borderColor: enabledServers.length > 0 ? 'rgba(255,42,67,0.35)' : undefined,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <Plug size={13} color={enabledServers.length > 0 ? '#ff2a43' : '#8e8e9c'} />
-                      <span>Tools ({enabledServers.length})</span>
-                    </button>
-
-                    <button
-                      onClick={() => setMcpModalOpen(true)}
-                      className="glass-pill"
-                      style={{ padding: '6px 11px', fontSize: 12, color: '#b4b4c0', display: 'inline-flex', alignItems: 'center', gap: 5, cursor: 'pointer' }}
-                    >
-                      <Plus size={12} /> Add MCP
-                    </button>
                   </div>
 
                   <button

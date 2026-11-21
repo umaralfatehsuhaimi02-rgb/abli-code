@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ChevronDown, ChevronRight, CreditCard, Folder, FolderPlus, LogOut, Monitor, PanelLeft, Pin, Plug, Plus, Search, Trash2, X
+  Archive, ArchiveRestore, BookOpen, ChevronDown, ChevronRight, Copy, CreditCard, Download, Folder, FolderPlus, LogOut,
+  MoreHorizontal, PanelLeft, Pencil, Pin, PinOff, Plug, Plus, Search, Trash2, X
 } from 'lucide-react';
+import { PromptLibrary } from './PromptLibrary';
 
 export interface SidebarThread {
   id: string;
@@ -18,24 +20,29 @@ interface SidebarProps {
   modelName: (slug: string) => string;
   user: any;
   usage: { label: string; value: string; percent: number } | null;
-  computerOpen: boolean;
   onSelect: (id: string) => void;
   onNew: (folder?: string) => void;
   onAddProject: () => void;
   onDelete: (id: string, e: React.MouseEvent) => void;
   onRename: (id: string, title: string) => void;
+  onDuplicate: (id: string) => void;
+  onExport: (id: string) => void;
+  onUsePrompt: (text: string) => void;
   onOpenMcp: () => void;
-  onToggleComputer: () => void;
   onOpenBilling: () => void;
   onLogout: () => void;
   onOpenAuth: () => void;
   onToggle: () => void;
 }
 
+type View = 'projects' | 'recents' | 'archived';
+type Confirm = { kind: 'signout' } | { kind: 'delete'; id: string };
+
 const RED = '#ff2a43';
 const COLLAPSE_KEY = 'abli_sidebar_collapsed_v1';
 const PIN_KEY = 'abli_sidebar_pinned_v1';
 const VIEW_KEY = 'abli_sidebar_view_v1';
+const ARCHIVE_KEY = 'abli_sidebar_archived_v1';
 
 function baseName(p: string) {
   const parts = p.split(/[\\/]+/).filter(Boolean);
@@ -51,34 +58,21 @@ function rel(iso: string) {
   return Math.floor(s / 604800) + 'w';
 }
 
-function loadCollapsed(): string[] {
+function loadList(key: string): string[] {
   try {
-    const v = JSON.parse(localStorage.getItem(COLLAPSE_KEY) || '[]');
+    const v = JSON.parse(localStorage.getItem(key) || '[]');
     return Array.isArray(v) ? v : [];
   } catch {
     return [];
   }
 }
 
-function NavRow({ icon, label, hint, active, onClick }: { icon: React.ReactNode; label: string; hint?: string; active?: boolean; onClick: () => void }) {
+function NavRow({ icon, label, hint, onClick }: { icon: React.ReactNode; label: string; hint?: string; onClick: () => void }) {
   return (
     <button
-      className={'sb-row' + (active ? ' sb-active' : '')}
+      className="sb-row"
       onClick={onClick}
-      style={{
-        width: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        padding: '8px 10px',
-        borderRadius: 10,
-        border: 'none',
-        color: active ? '#fff' : '#d4d4de',
-        fontSize: 13,
-        cursor: 'pointer',
-        textAlign: 'left',
-        fontFamily: 'inherit'
-      }}
+      style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 10, border: 'none', color: '#d4d4de', fontSize: 13, cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
     >
       <span style={{ display: 'inline-flex', color: RED }}>{icon}</span>
       <span style={{ flex: 1 }}>{label}</span>
@@ -96,27 +90,29 @@ function SectionHeader({ label, action }: { label: string; action?: React.ReactN
   );
 }
 
-function ThreadRow({ t, active, busy, indent, tip, pinned, onSelect, onDelete, onPin, onRename }: {
-  t: SidebarThread; active: boolean; busy: boolean; indent: boolean; tip: string; pinned: boolean;
-  onSelect: (id: string) => void; onDelete: (id: string, e: React.MouseEvent) => void;
-  onPin: (id: string) => void; onRename: (id: string, title: string) => void;
+function ThreadRow({ t, active, busy, indent, tip, pinned, editing, onSelect, onMenu, onStartRename, onCommitRename, onCancelRename }: {
+  t: SidebarThread; active: boolean; busy: boolean; indent: boolean; tip: string; pinned: boolean; editing: boolean;
+  onSelect: (id: string) => void; onMenu: (id: string, x: number, y: number) => void;
+  onStartRename: (id: string) => void; onCommitRename: (id: string, title: string) => void; onCancelRename: () => void;
 }) {
-  const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(t.title);
+  useEffect(() => { if (editing) setDraft(t.title); }, [editing]);
   const commit = () => {
     const v = draft.trim();
-    setEditing(false);
-    if (v && v !== t.title) onRename(t.id, v);
+    if (v && v !== t.title) onCommitRename(t.id, v);
+    else onCancelRename();
   };
   return (
     <div
       className={'sb-row sb-thread' + (active ? ' sb-active' : '')}
       onClick={() => { if (!editing) onSelect(t.id); }}
-      onDoubleClick={() => { setDraft(t.title); setEditing(true); }}
-      title={tip + '  (double-click to rename)'}
-      style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, padding: '7px 36px 7px ' + (indent ? 32 : 12) + 'px', borderRadius: 10, cursor: 'pointer' }}
+      onDoubleClick={() => onStartRename(t.id)}
+      onContextMenu={(e) => { e.preventDefault(); onMenu(t.id, e.clientX + 190, e.clientY); }}
+      title={tip}
+      style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 7, padding: '7px 36px 7px ' + (indent ? 32 : 12) + 'px', borderRadius: 10, cursor: 'pointer' }}
     >
       {active && <span style={{ position: 'absolute', left: indent ? 20 : 3, top: 8, bottom: 8, width: 3, borderRadius: 3, background: RED }} />}
+      {pinned && !editing && <Pin size={11} color={RED} style={{ flexShrink: 0 }} />}
       {editing ? (
         <input
           autoFocus
@@ -126,7 +122,7 @@ function ThreadRow({ t, active, busy, indent, tip, pinned, onSelect, onDelete, o
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => {
             if (e.key === 'Enter') commit();
-            if (e.key === 'Escape') setEditing(false);
+            if (e.key === 'Escape') onCancelRename();
           }}
           style={{ flex: 1, minWidth: 0, background: '#15151b', border: '1px solid ' + RED, borderRadius: 7, outline: 'none', color: '#fff', fontSize: 13, padding: '3px 6px', fontFamily: 'inherit' }}
         />
@@ -141,14 +137,17 @@ function ThreadRow({ t, active, busy, indent, tip, pinned, onSelect, onDelete, o
         <span className="sb-time" style={{ position: 'absolute', right: 12, fontSize: 11, color: '#5f5f6b' }}>{rel(t.updatedAt)}</span>
       ))}
       {!editing && (
-        <>
-          <button className="sb-act sb-act2" title={pinned ? 'Unpin' : 'Pin to top'} onClick={(e) => { e.stopPropagation(); onPin(t.id); }} style={{ color: pinned ? RED : undefined }}>
-            <Pin size={13} />
-          </button>
-          <button className="sb-act" title="Delete thread" onClick={(e) => onDelete(t.id, e)}>
-            <Trash2 size={13} />
-          </button>
-        </>
+        <button
+          className="sb-act"
+          title="Thread actions"
+          onClick={(e) => {
+            e.stopPropagation();
+            const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+            onMenu(t.id, r.right, r.bottom);
+          }}
+        >
+          <MoreHorizontal size={14} />
+        </button>
       )}
     </div>
   );
@@ -156,12 +155,25 @@ function ThreadRow({ t, active, busy, indent, tip, pinned, onSelect, onDelete, o
 
 export function Sidebar(p: SidebarProps) {
   const [query, setQuery] = useState('');
-  const [collapsed, setCollapsed] = useState<string[]>(loadCollapsed);
+  const [collapsed, setCollapsed] = useState<string[]>(() => loadList(COLLAPSE_KEY));
+  const [pinned, setPinned] = useState<string[]>(() => loadList(PIN_KEY));
+  const [archived, setArchived] = useState<string[]>(() => loadList(ARCHIVE_KEY));
+  const [view, setView] = useState<View>(() => {
+    try {
+      const v = localStorage.getItem(VIEW_KEY);
+      return v === 'recents' || v === 'archived' ? v : 'projects';
+    } catch { return 'projects'; }
+  });
+  const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState<Confirm | null>(null);
+  const [promptsOpen, setPromptsOpen] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    try { localStorage.setItem(COLLAPSE_KEY, JSON.stringify(collapsed)); } catch {}
-  }, [collapsed]);
+  useEffect(() => { try { localStorage.setItem(COLLAPSE_KEY, JSON.stringify(collapsed)); } catch {} }, [collapsed]);
+  useEffect(() => { try { localStorage.setItem(PIN_KEY, JSON.stringify(pinned)); } catch {} }, [pinned]);
+  useEffect(() => { try { localStorage.setItem(ARCHIVE_KEY, JSON.stringify(archived)); } catch {} }, [archived]);
+  useEffect(() => { try { localStorage.setItem(VIEW_KEY, view); } catch {} }, [view]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -170,30 +182,26 @@ export function Sidebar(p: SidebarProps) {
         searchRef.current?.focus();
         searchRef.current?.select();
       }
+      if (e.key === 'Escape') {
+        setMenu(null);
+        setConfirm(null);
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const [view, setView] = useState<'projects' | 'recents'>(() => {
-    try { return localStorage.getItem(VIEW_KEY) === 'recents' ? 'recents' : 'projects'; } catch { return 'projects'; }
-  });
-  const [pinned, setPinned] = useState<string[]>(() => {
-    try {
-      const v = JSON.parse(localStorage.getItem(PIN_KEY) || '[]');
-      return Array.isArray(v) ? v : [];
-    } catch { return []; }
-  });
-  useEffect(() => { try { localStorage.setItem(VIEW_KEY, view); } catch {} }, [view]);
-  useEffect(() => { try { localStorage.setItem(PIN_KEY, JSON.stringify(pinned)); } catch {} }, [pinned]);
   const togglePin = (id: string) => setPinned((c) => (c.includes(id) ? c.filter((x) => x !== id) : [id, ...c]));
+  const toggleArchive = (id: string) => setArchived((c) => (c.includes(id) ? c.filter((x) => x !== id) : [id, ...c]));
 
   const q = query.trim().toLowerCase();
   const groups = useMemo(() => {
     const filtered = p.threads.filter((t) => !q || t.title.toLowerCase().includes(q) || baseName(t.workspacePath || '').toLowerCase().includes(q));
     const sorted = [...filtered].sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
-    const pins = pinned.map((id) => sorted.find((t) => t.id === id)).filter(Boolean) as SidebarThread[];
-    const rest = sorted.filter((t) => !pinned.includes(t.id));
+    const archivedList = sorted.filter((t) => archived.includes(t.id));
+    const live = sorted.filter((t) => !archived.includes(t.id));
+    const pins = pinned.map((id) => live.find((t) => t.id === id)).filter(Boolean) as SidebarThread[];
+    const rest = live.filter((t) => !pinned.includes(t.id));
     const projects = new Map<string, SidebarThread[]>();
     const chats: SidebarThread[] = [];
     for (const t of rest) {
@@ -213,8 +221,10 @@ export function Sidebar(p: SidebarProps) {
       const i = age <= 0 ? 0 : age === 1 ? 1 : age <= 7 ? 2 : 3;
       buckets[i][1].push(t);
     }
-    return { pins, projects: Array.from(projects.entries()), chats, buckets: buckets.filter((b) => b[1].length > 0), total: sorted.length };
-  }, [p.threads, q, pinned]);
+    return { pins, archivedList, projects: Array.from(projects.entries()), chats, buckets: buckets.filter((b) => b[1].length > 0), total: live.length };
+  }, [p.threads, q, pinned, archived]);
+
+  const archivedCount = p.threads.filter((t) => archived.includes(t.id)).length;
 
   const row = (t: SidebarThread, indent: boolean) => (
     <ThreadRow
@@ -224,28 +234,40 @@ export function Sidebar(p: SidebarProps) {
       active={t.id === p.activeId}
       busy={t.id === p.busyId}
       pinned={pinned.includes(t.id)}
+      editing={renamingId === t.id}
       tip={p.modelName(t.modelSlug)}
       onSelect={p.onSelect}
-      onDelete={p.onDelete}
-      onPin={togglePin}
-      onRename={p.onRename}
+      onMenu={(id, x, y) => setMenu({ id, x, y })}
+      onStartRename={(id) => setRenamingId(id)}
+      onCommitRename={(id, title) => { p.onRename(id, title); setRenamingId(null); }}
+      onCancelRename={() => setRenamingId(null)}
     />
   );
 
-  const toggle = (path: string) =>
-    setCollapsed((c) => (c.includes(path) ? c.filter((x) => x !== path) : [...c, path]));
+  const toggle = (path: string) => setCollapsed((c) => (c.includes(path) ? c.filter((x) => x !== path) : [...c, path]));
+
+  const segBtn = (v: View, label: string) => (
+    <button
+      onClick={() => setView(v)}
+      style={{ flex: 1, padding: '5px 0', borderRadius: 8, border: 'none', fontSize: 12, fontFamily: 'inherit', cursor: 'pointer', background: view === v ? 'rgba(255,255,255,0.12)' : 'transparent', color: view === v ? '#fff' : '#8e8e9c' }}
+    >
+      {label}
+    </button>
+  );
+
+  const menuThread = menu ? p.threads.find((t) => t.id === menu.id) : undefined;
+  const confirmThread = confirm && confirm.kind === 'delete' ? p.threads.find((t) => t.id === confirm.id) : undefined;
+
+  const runConfirm = () => {
+    if (!confirm) return;
+    if (confirm.kind === 'signout') p.onLogout();
+    else p.onDelete(confirm.id, { stopPropagation: () => {} } as unknown as React.MouseEvent);
+    setConfirm(null);
+  };
 
   return (
     <aside className="sb-root"
-      style={{
-        width: 276,
-        borderRight: '1px solid rgba(255,255,255,0.07)',
-        background: '#09090d',
-        display: 'flex',
-        flexDirection: 'column',
-        flexShrink: 0,
-        minHeight: 0
-      }}
+      style={{ width: 276, borderRight: '1px solid rgba(255,255,255,0.07)', background: '#09090d', display: 'flex', flexDirection: 'column', flexShrink: 0, minHeight: 0 }}
     >
       <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '10px 12px 0' }}>
         <button onClick={p.onToggle} title="Hide sidebar (Ctrl+B)" className="sb-icon-btn">
@@ -255,8 +277,8 @@ export function Sidebar(p: SidebarProps) {
 
       <div style={{ padding: '4px 10px 4px', display: 'grid', gap: 2 }}>
         <NavRow icon={<Plus size={15} />} label="New thread" hint="Ctrl N" onClick={() => p.onNew()} />
+        <NavRow icon={<BookOpen size={15} />} label="Prompts" onClick={() => setPromptsOpen(true)} />
         <NavRow icon={<Plug size={15} />} label="MCP servers" onClick={p.onOpenMcp} />
-        <NavRow icon={<Monitor size={15} />} label="Computer control" active={p.computerOpen} onClick={p.onToggleComputer} />
         <NavRow icon={<CreditCard size={15} />} label="Plans and credits" onClick={p.onOpenBilling} />
       </div>
 
@@ -282,30 +304,21 @@ export function Sidebar(p: SidebarProps) {
 
       <div style={{ padding: '10px 10px 0' }}>
         <div style={{ display: 'flex', gap: 2, padding: 3, borderRadius: 11, background: 'rgba(255,255,255,0.05)' }}>
-            <button
-              onClick={() => setView('projects')}
-              style={{ flex: 1, padding: '5px 0', borderRadius: 8, border: 'none', fontSize: 12, fontFamily: 'inherit', cursor: 'pointer', background: view === 'projects' ? 'rgba(255,255,255,0.12)' : 'transparent', color: view === 'projects' ? '#fff' : '#8e8e9c' }}
-            >
-              Projects
-            </button>
-            <button
-              onClick={() => setView('recents')}
-              style={{ flex: 1, padding: '5px 0', borderRadius: 8, border: 'none', fontSize: 12, fontFamily: 'inherit', cursor: 'pointer', background: view === 'recents' ? 'rgba(255,255,255,0.12)' : 'transparent', color: view === 'recents' ? '#fff' : '#8e8e9c' }}
-            >
-              Recents
-            </button>
+          {segBtn('projects', 'Projects')}
+          {segBtn('recents', 'Recents')}
+          {segBtn('archived', archivedCount > 0 ? 'Archived ' + archivedCount : 'Archived')}
         </div>
       </div>
 
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 10px 10px' }}>
-        {groups.pins.length > 0 && (
+        {view !== 'archived' && groups.pins.length > 0 && (
           <>
             <SectionHeader label="PINNED" />
             {groups.pins.map((t) => row(t, false))}
           </>
         )}
 
-        {view === 'projects' ? (
+        {view === 'projects' && (
           <>
             <SectionHeader
               label="PROJECTS"
@@ -350,16 +363,27 @@ export function Sidebar(p: SidebarProps) {
             {groups.chats.length > 0 && <SectionHeader label="CHATS" />}
             {groups.chats.map((t) => row(t, false))}
           </>
-        ) : (
+        )}
+
+        {view === 'recents' &&
           groups.buckets.map(([label, list]) => (
             <div key={label}>
               <SectionHeader label={label.toUpperCase()} />
               {list.map((t) => row(t, false))}
             </div>
-          ))
+          ))}
+
+        {view === 'archived' && (
+          <>
+            <SectionHeader label="ARCHIVED" />
+            {groups.archivedList.map((t) => row(t, false))}
+            {groups.archivedList.length === 0 && (
+              <div style={{ padding: '10px', fontSize: 12.5, color: '#5f5f6b' }}>Nothing archived. Use the ... menu on a thread to archive it.</div>
+            )}
+          </>
         )}
 
-        {groups.total === 0 && (
+        {view !== 'archived' && groups.total === 0 && (
           <div style={{ padding: '10px', fontSize: 12.5, color: '#5f5f6b' }}>{q ? 'No threads match.' : 'No threads yet.'}</div>
         )}
       </div>
@@ -383,7 +407,7 @@ export function Sidebar(p: SidebarProps) {
                 <div style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.user.name}</div>
                 <div style={{ fontSize: 11, color: '#71717e', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.user.email}</div>
               </div>
-              <button onClick={p.onLogout} title="Sign out" style={{ background: 'none', border: 'none', color: '#8e8e9c', cursor: 'pointer', padding: 6, borderRadius: 8 }}>
+              <button onClick={() => setConfirm({ kind: 'signout' })} title="Sign out" style={{ background: 'none', border: 'none', color: '#8e8e9c', cursor: 'pointer', padding: 6, borderRadius: 8 }}>
                 <LogOut size={14} />
               </button>
             </div>
@@ -394,6 +418,60 @@ export function Sidebar(p: SidebarProps) {
           </button>
         )}
       </div>
+
+      {menu && menuThread && (
+        <>
+          <div onClick={() => setMenu(null)} onContextMenu={(e) => { e.preventDefault(); setMenu(null); }} style={{ position: 'fixed', inset: 0, zIndex: 60 }} />
+          <div
+            className="pop-in"
+            style={{ position: 'fixed', left: Math.max(8, Math.min(menu.x - 196, window.innerWidth - 208)), top: Math.max(8, Math.min(menu.y + 4, window.innerHeight - 262)), width: 196, zIndex: 61, background: '#111116', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 14, padding: 6 }}
+          >
+            {[
+              { icon: <Pencil size={14} />, label: 'Rename', run: () => setRenamingId(menuThread.id) },
+              { icon: pinned.includes(menuThread.id) ? <PinOff size={14} /> : <Pin size={14} />, label: pinned.includes(menuThread.id) ? 'Unpin' : 'Pin to top', run: () => togglePin(menuThread.id) },
+              { icon: <Copy size={14} />, label: 'Duplicate', run: () => p.onDuplicate(menuThread.id) },
+              { icon: <Download size={14} />, label: 'Export as Markdown', run: () => p.onExport(menuThread.id) },
+              { icon: archived.includes(menuThread.id) ? <ArchiveRestore size={14} /> : <Archive size={14} />, label: archived.includes(menuThread.id) ? 'Unarchive' : 'Archive', run: () => toggleArchive(menuThread.id) },
+              { icon: <Trash2 size={14} />, label: 'Delete', danger: true, run: () => setConfirm({ kind: 'delete', id: menuThread.id }) }
+            ].map((item) => (
+              <button
+                key={item.label}
+                className="sb-row"
+                onClick={() => { setMenu(null); item.run(); }}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 9, border: 'none', fontSize: 13, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', color: (item as any).danger ? '#ff6b7d' : '#d4d4de' }}
+              >
+                {item.icon}
+                <span>{item.label}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      {confirm && (
+        <div onClick={() => setConfirm(null)} style={{ position: 'fixed', inset: 0, zIndex: 90, background: 'rgba(0,0,0,0.75)', display: 'grid', placeItems: 'center' }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: 380, maxWidth: '92vw', background: '#111116', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, padding: 24 }}>
+            <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>
+              {confirm.kind === 'signout' ? 'Sign out of Abli Code?' : 'Delete this thread?'}
+            </div>
+            <p style={{ fontSize: 13.5, color: '#9b9ba8', lineHeight: 1.55, margin: '0 0 20px' }}>
+              {confirm.kind === 'signout'
+                ? 'You will need to sign in again to keep chatting. Your threads stay saved on this device.'
+                : (confirmThread ? '"' + confirmThread.title + '"' : 'This thread') + ' will be removed from this device. This cannot be undone.'}
+            </p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button autoFocus className="btn-outline" onClick={() => setConfirm(null)} style={{ padding: '9px 18px', fontSize: 13 }}>
+                Cancel
+              </button>
+              <button className="btn-red" onClick={runConfirm} style={{ padding: '9px 18px', fontSize: 13 }}>
+                {confirm.kind === 'signout' ? 'Sign out' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <PromptLibrary open={promptsOpen} onClose={() => setPromptsOpen(false)} onUse={p.onUsePrompt} />
     </aside>
   );
 }
