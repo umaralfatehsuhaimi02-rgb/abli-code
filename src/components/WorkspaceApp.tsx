@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowUp, Check, ChevronDown, Cpu, CreditCard, FolderOpen,
-  LogOut, Maximize2, Minimize2, Monitor, Plus, Plug,
+  LogOut, PanelLeft, Maximize2, Minimize2, Monitor, Plus, Plug,
   Settings, Sparkles, Trash2, Wrench, X
 } from 'lucide-react';
 import { api, CatalogResponse, ModelConfig, UserProfile } from '../lib/api';
 import { ShapeArt } from './ShapeArt';
 import { AbliLogo } from './AbliLogo';
+import { Sidebar } from './Sidebar';
 
 interface ThreadMessage {
   id: string;
@@ -85,6 +86,9 @@ export function WorkspaceApp({
     [threads, activeThreadId]
   );
 
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(() => {
+    try { return localStorage.getItem('abli_sidebar_open') !== '0'; } catch { return true; }
+  });
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [chatError, setChatError] = useState('');
@@ -173,6 +177,42 @@ export function WorkspaceApp({
     setActiveThreadId(t.id);
     setChatError('');
   };
+
+  const startThread = (folder?: string) => {
+    const t: Thread = {
+      id: crypto.randomUUID(),
+      title: 'New thread',
+      workspacePath: folder !== undefined ? folder : activeThread?.workspacePath || '',
+      modelSlug: activeThread?.modelSlug || defaultModelSlug,
+      messages: [],
+      updatedAt: new Date().toISOString()
+    };
+    setThreads((prev) => [t, ...prev]);
+    setActiveThreadId(t.id);
+    setChatError('');
+  };
+
+  const addProject = async () => {
+    let dir: string | null | undefined = '';
+    if (isDesktop && desktopApi?.pickFolder) dir = await desktopApi.pickFolder();
+    else dir = window.prompt('Enter local project folder path:', 'C:\\Users\\User');
+    if (dir && dir.trim()) startThread(dir.trim());
+  };
+
+  useEffect(() => {
+    try { localStorage.setItem('abli_sidebar_open', sidebarOpen ? '1' : '0'); } catch {}
+  }, [sidebarOpen]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey) return;
+      const k = e.key.toLowerCase();
+      if (k === 'b') { e.preventDefault(); setSidebarOpen((v) => !v); }
+      else if (k === 'n') { e.preventDefault(); startThread(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
 
   const deleteThread = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -347,6 +387,15 @@ export function WorkspaceApp({
       >
         <div className="no-drag" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <button
+            onClick={() => setSidebarOpen((v) => !v)}
+            title="Toggle sidebar (Ctrl+B)"
+            className="glass-pill"
+            style={{ padding: '6px 8px', display: 'inline-flex', alignItems: 'center', cursor: 'pointer', color: sidebarOpen ? '#ff6b7d' : '#c4c4d0' }}
+          >
+            <PanelLeft size={15} />
+          </button>
+
+          <button
             onClick={onBackLanding}
             title="Back to website"
             style={{ background: 'none', border: 'none', color: '#fff', display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer', padding: '4px 6px', borderRadius: 10 }}
@@ -416,136 +465,37 @@ export function WorkspaceApp({
 
       {/* Main 2-or-3-Column Codex Layout */}
       <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
-        {/* Left Thread Sidebar */}
-        <aside
-          style={{
-            width: 260,
-            borderRight: '1px solid rgba(255,255,255,0.07)',
-            background: '#09090d',
-            display: 'flex',
-            flexDirection: 'column',
-            padding: 12,
-            gap: 12,
-            flexShrink: 0
-          }}
-        >
-          <button
-            onClick={createNewThread}
-            className="btn-outline"
-            style={{
-              width: '100%',
-              padding: '10px 14px',
-              borderRadius: 14,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              fontSize: 13
-            }}
-          >
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-              <Plus size={15} color="#ff2a43" /> New thread
-            </span>
-          </button>
-
-          <div style={{ fontSize: 11, fontWeight: 600, color: '#71717e', padding: '4px 8px 0' }}>THREADS</div>
-
-          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {threads.map((t) => {
-              const active = t.id === activeThread?.id;
-              return (
-                <div
-                  key={t.id}
-                  onClick={() => setActiveThreadId(t.id)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 8,
-                    padding: '9px 11px',
-                    borderRadius: 12,
-                    cursor: 'pointer',
-                    background: active ? 'rgba(255,255,255,0.07)' : 'transparent',
-                    border: `1px solid ${active ? 'rgba(255,255,255,0.1)' : 'transparent'}`,
-                    transition: 'background 0.15s ease'
-                  }}
-                >
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: active ? 600 : 400, color: active ? '#fff' : '#b4b4c0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {t.title}
-                    </div>
-                    <div style={{ fontSize: 11, color: '#6b6b78', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {catalog.models.find((m) => m.slug === t.modelSlug)?.name || t.modelSlug}
-                    </div>
-                  </div>
-                  <button
-                    onClick={(e) => deleteThread(t.id, e)}
-                    style={{ background: 'none', border: 'none', color: '#6b6b78', cursor: 'pointer', padding: 3, borderRadius: 6 }}
-                    title="Delete thread"
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Bottom User & Usage Summary */}
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', paddingTop: 12, display: 'grid', gap: 10 }}>
-            {user ? (
-              <>
-                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, padding: 11 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, marginBottom: 6 }}>
-                    <span style={{ color: '#9b9ba8' }}>
-                      {freeModelStats ? 'Daily usage limit' : `${user.plan.toUpperCase()} Usage`}
-                    </span>
-                    <span style={{ fontWeight: 600, color: '#fff' }}>
-                      {freeModelStats
-                        ? `${fmtTok(freeModelStats.used)} / ${fmtTok((freeModelStats as any).limit)}`
-                        : user.plan === 'free'
-                          ? `$${user.creditBalanceUsd.toFixed(2)} credits`
-                          : `${user.planUsagePercent.toFixed(0)}%`}
-                    </span>
-                  </div>
-                  <div style={{ height: 5, borderRadius: 999, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
-                    <div
-                      style={{
-                        height: '100%',
-                        borderRadius: 999,
-                        background: '#ff2a43',
-                        width: `${
-                          freeModelStats
-                            ? Math.min(100, (freeModelStats.used / freeModelStats.limit) * 100)
-                            : user.plan === 'free'
-                              ? 0
-                              : Math.min(100, user.planUsagePercent)
-                        }%`,
-                        transition: 'width 0.3s ease'
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px' }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.name}</div>
-                    <div style={{ fontSize: 11, color: '#71717e', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.email}</div>
-                  </div>
-                  <button
-                    onClick={onLogout}
-                    title="Sign out"
-                    style={{ background: 'none', border: 'none', color: '#8e8e9c', cursor: 'pointer', padding: 6, borderRadius: 8 }}
-                  >
-                    <LogOut size={14} />
-                  </button>
-                </div>
-              </>
-            ) : (
-              <button className="btn-red" style={{ width: '100%', padding: '10px', fontSize: 13 }} onClick={onOpenAuth}>
-                Sign in / Verify Email
-              </button>
-            )}
-          </div>
-        </aside>
+        {sidebarOpen && (
+          <Sidebar
+            threads={threads}
+            activeId={activeThread?.id || ''}
+            busyId={sending ? activeThread?.id : ''}
+            modelName={(slug) => catalog.models.find((m) => m.slug === slug)?.name || slug}
+            user={user}
+            usage={(() => {
+              if (!user) return null;
+              if (freeModelStats) {
+                const lim = (freeModelStats as any).limit;
+                return { label: 'Daily usage limit', value: fmtTok(freeModelStats.used) + ' / ' + fmtTok(lim), percent: Math.min(100, (freeModelStats.used / lim) * 100) };
+              }
+              return {
+                label: user.plan.toUpperCase() + ' Usage',
+                value: user.plan === 'free' ? '$' + user.creditBalanceUsd.toFixed(2) + ' credits' : user.planUsagePercent.toFixed(0) + '%',
+                percent: user.plan === 'free' ? 0 : Math.min(100, user.planUsagePercent)
+              };
+            })()}
+            computerOpen={computerDrawerOpen}
+            onSelect={(id) => { setActiveThreadId(id); setChatError(''); }}
+            onNew={(folder) => startThread(folder)}
+            onAddProject={addProject}
+            onDelete={deleteThread}
+            onOpenMcp={() => setMcpModalOpen(true)}
+            onToggleComputer={() => setComputerDrawerOpen((v) => !v)}
+            onOpenBilling={() => { setBillingOpen(true); refreshBillingHistory(); }}
+            onLogout={onLogout}
+            onOpenAuth={onOpenAuth}
+          />
+        )}
 
         {/* Center Codex Thread Canvas */}
         <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, position: 'relative' }}>

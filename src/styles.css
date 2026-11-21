@@ -215,3 +215,15 @@ button, input, select, textarea {
     animation: none;
   }
 }
+
+.sb-row{transition:background .15s ease;background:transparent}
+.sb-row:hover{background:rgba(255,255,255,.055)}
+.sb-row.sb-active{background:rgba(255,255,255,.085)}
+.sb-act{position:absolute;right:6px;top:50%;transform:translateY(-50%);display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border:none;border-radius:8px;background:#15151b;color:#9b9ba8;cursor:pointer;opacity:0;transition:opacity .12s ease,color .12s ease}
+.sb-row:hover .sb-act{opacity:1}
+.sb-act:hover{color:#ff2a43}
+.sb-thread:hover .sb-time,.sb-thread:hover .sb-dot{opacity:0}
+.sb-dot{width:7px;height:7px;border-radius:50%;background:#ff2a43;animation:sb-blink 1.05s steps(1) infinite}
+@keyframes sb-blink{50%{opacity:.15}}
+.sb-icon-btn{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border:none;border-radius:8px;background:transparent;color:#71717e;cursor:pointer;transition:color .12s ease,background .12s ease}
+.sb-icon-btn:hover{color:#ff2a43;background:rgba(255,255,255,.06)}
