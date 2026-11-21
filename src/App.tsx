@@ -9,6 +9,9 @@ import { AbliLogo } from './components/AbliLogo';
 
 type RouteView = 'landing' | 'app' | 'terms' | 'privacy' | 'aup' | 'cookies';
 
+// The desktop app has no marketing site: it only ever shows the sign-in gate or the workspace.
+const IS_DESKTOP = !!(window as any).abliDesktop?.isDesktop;
+
 function resolveRoute(): RouteView {
   const hash = window.location.hash.replace(/^#/, '');
   const path = window.location.pathname;
@@ -79,7 +82,8 @@ export function App() {
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
-  const navigate = (next: RouteView) => {
+  const navigate = (to: RouteView) => {
+    const next: RouteView = IS_DESKTOP && to === 'landing' ? 'app' : to;
     setRoute(next);
     if (next === 'landing') window.location.hash = '#/';
     else if (next === 'app') window.location.hash = '#/app';

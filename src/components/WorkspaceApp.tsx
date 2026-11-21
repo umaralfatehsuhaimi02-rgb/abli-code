@@ -397,7 +397,7 @@ export function WorkspaceApp({
 
           <button
             onClick={onBackLanding}
-            title="Back to website"
+            title={isDesktop ? 'Abli Code' : 'Back to website'}
             style={{ background: 'none', border: 'none', color: '#fff', display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer', padding: '4px 6px', borderRadius: 10 }}
           >
             <AbliLogo size={24} />
