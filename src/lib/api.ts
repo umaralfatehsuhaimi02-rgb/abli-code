@@ -151,12 +151,12 @@ export const api = {
   billingHistory: () => apiFetch<{ transactions: any[]; usage: any[] }>('/api/billing/history'),
   chat: (payload: {
     modelSlug: string;
-    messages: { role: string; content: string }[];
+    messages: { role: string; content: any }[];
     enableTools: boolean;
     computerControlEnabled: boolean;
     enabledServers?: string[];
     workspacePath?: string;
-  }) =>
+  }, signal?: AbortSignal) =>
     apiFetch<{
       content: string;
       promptTokens: number;
@@ -166,7 +166,8 @@ export const api = {
       user: UserProfile;
     }>('/api/chat/completions', {
       method: 'POST',
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      signal
     }),
   listMcpServers: () => apiFetch<{ servers: any[] }>('/api/mcp/servers'),
   addMcpServer: (server: any) =>

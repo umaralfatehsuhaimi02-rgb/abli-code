@@ -4,6 +4,7 @@ import {
   MoreHorizontal, PanelLeft, Pencil, Pin, PinOff, Plug, Plus, Search, Trash2, X
 } from 'lucide-react';
 import { PromptLibrary } from './PromptLibrary';
+import { ModelShape } from './ModelShape';
 
 export interface SidebarThread {
   id: string;
@@ -84,7 +85,10 @@ function NavRow({ icon, label, hint, onClick }: { icon: React.ReactNode; label: 
 function SectionHeader({ label, action }: { label: string; action?: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 10px 6px', fontSize: 11, fontWeight: 600, letterSpacing: '0.04em', color: '#71717e' }}>
-      <span>{label}</span>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+        <i style={{ display: 'inline-block', width: 6, height: 6, background: RED, borderRadius: 1 }} />
+        {label}
+      </span>
       {action}
     </div>
   );
@@ -112,6 +116,7 @@ function ThreadRow({ t, active, busy, indent, tip, pinned, editing, onSelect, on
       style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 7, padding: '7px 36px 7px ' + (indent ? 32 : 12) + 'px', borderRadius: 10, cursor: 'pointer' }}
     >
       {active && <span style={{ position: 'absolute', left: indent ? 20 : 3, top: 8, bottom: 8, width: 3, borderRadius: 3, background: RED }} />}
+      {!editing && <ModelShape name={tip} size={8} color={active ? RED : '#4a4a56'} />}
       {pinned && !editing && <Pin size={11} color={RED} style={{ flexShrink: 0 }} />}
       {editing ? (
         <input

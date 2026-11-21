@@ -1,6 +1,6 @@
 ﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ArrowUp, Check, ChevronDown, Cpu, CreditCard, FolderOpen,
+  ArrowUp, Check, ChevronDown, Copy, Cpu, CreditCard, FolderOpen, Pencil, RefreshCw, Square,
   LogOut, PanelLeft, Paperclip, Maximize2, Minimize2, Monitor, Plus, Plug,
   Settings, Sparkles, Trash2, Wrench, X
 } from 'lucide-react';
@@ -8,6 +8,8 @@ import { api, CatalogResponse, ModelConfig, UserProfile } from '../lib/api';
 import { ShapeArt } from './ShapeArt';
 import { AbliLogo } from './AbliLogo';
 import { Sidebar } from './Sidebar';
+import { ModelShape } from './ModelShape';
+import { Markdown } from './Markdown';
 import { AttachmentBar, MessageAttachments } from './AttachmentBar';
 import { Attachment, readFiles, toApiMessage } from '../lib/attachments';
 import { CheckoutModal, CheckoutRequest } from './CheckoutModal';
@@ -200,6 +202,53 @@ export function WorkspaceApp({
     setChatError('');
   };
 
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState('');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const copyText = (text: string, id: string) => {
+    const done = () => {
+      setCopiedId(id);
+      setTimeout(() => setCopiedId((cur) => (cur === id ? null : cur)), 1400);
+    };
+    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(done).catch(() => {});
+    else {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+      done();
+    }
+  };
+
+  const submitEdit = (id: string) => {
+    const idx = activeThread.messages.findIndex((m) => m.id === id);
+    if (idx < 0 || !editDraft.trim()) return;
+    const orig = activeThread.messages[idx];
+    setEditingId(null);
+    sendPrompt(editDraft, { baseMessages: activeThread.messages.slice(0, idx), attachments: orig.attachments });
+  };
+
+  const regenerateFrom = (assistantId: string) => {
+    const idx = activeThread.messages.findIndex((m) => m.id === assistantId);
+    let u = idx - 1;
+    while (u >= 0 && activeThread.messages[u].role !== 'user') u--;
+    if (idx < 1 || u < 0) return;
+    const prev = activeThread.messages[u];
+    sendPrompt(prev.content, { baseMessages: activeThread.messages.slice(0, u), attachments: prev.attachments });
+  };
+
+  const deleteMessage = (id: string) => {
+    updateActiveThread((t) => ({ ...t, messages: t.messages.filter((m) => m.id !== id) }));
+  };
+
+  const timeLabel = (iso: string) => {
+    try { return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } catch { return ''; }
+  };
+
   const duplicateThread = (id: string) => {
     const src = threads.find((t) => t.id === id);
     if (!src) return;
@@ -311,16 +360,17 @@ export function WorkspaceApp({
     setEnabledServers((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
-  const sendPrompt = async (overrideText?: string) => {
+  const sendPrompt = async (overrideText?: string, opts?: { baseMessages?: ThreadMessage[]; attachments?: Attachment[] }) => {
     const text = (overrideText ?? input).trim();
-    if ((!text && attachments.length === 0) || sending) return;
+    const sendAtts: Attachment[] | undefined = opts?.attachments ?? (overrideText === undefined ? attachments : undefined);
+    if ((!text && !(sendAtts && sendAtts.length)) || sending) return;
     if (!user) {
       onOpenAuth();
       return;
     }
 
     setChatError('');
-    if (!overrideText) {
+    if (overrideText === undefined) {
       setInput('');
       setAttachments([]);
       setAttachNote('');
@@ -330,13 +380,14 @@ export function WorkspaceApp({
       id: crypto.randomUUID(),
       role: 'user',
       content: text,
-      attachments: !overrideText && attachments.length ? attachments : undefined,
+      attachments: sendAtts && sendAtts.length ? sendAtts : undefined,
       createdAt: new Date().toISOString()
     };
 
-    const nextMessages = [...activeThread.messages, userMsg];
+    const baseMsgs = opts?.baseMessages ?? activeThread.messages;
+    const nextMessages = [...baseMsgs, userMsg];
     const nextTitle =
-      activeThread.messages.length === 0 ? (text || attachments[0]?.name || 'Attachment').slice(0, 42) + (text.length > 42 ? '...' : '') : activeThread.title;
+      baseMsgs.length === 0 ? (text || sendAtts?.[0]?.name || 'Attachment').slice(0, 42) + (text.length > 42 ? '...' : '') : activeThread.title;
 
     updateActiveThread((t) => ({
       ...t,
@@ -346,6 +397,8 @@ export function WorkspaceApp({
     }));
 
     setSending(true);
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
     try {
       const res = await api.chat({
         modelSlug: activeModel.slug,
@@ -354,7 +407,7 @@ export function WorkspaceApp({
         computerControlEnabled: false,
         enabledServers,
         workspacePath: activeThread.workspacePath
-      });
+      }, ctrl.signal);
 
       const assistantMsg: ThreadMessage = {
         id: crypto.randomUUID(),
@@ -373,6 +426,10 @@ export function WorkspaceApp({
 
       if (res.user) onUserChange(res.user);
     } catch (err: any) {
+      if (err?.name === 'AbortError') {
+        setChatError('');
+        return;
+      }
       setChatError(err.message);
       if (err.code === 'PLAN_LIMIT_REACHED' || err.code === 'UPGRADE_REQUIRED' || err.code === 'FREE_DAILY_LIMIT_REACHED') {
         setBillingOpen(true);
@@ -493,6 +550,11 @@ export function WorkspaceApp({
                 {activeThread?.workspacePath || 'Select project folder'}
               </span>
             </button>
+            {activeThread && activeThread.messages.length > 0 && (
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#e4e4ec', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {activeThread.title}
+              </span>
+            )}
           </div>
           <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '28px 24px 16px' }}>
             <div style={{ maxWidth: 820, margin: '0 auto' }}>
@@ -539,20 +601,42 @@ export function WorkspaceApp({
                   {activeThread.messages.map((m) => (
                     <div
                       key={m.id}
-                      className="pop-in"
+                      className="pop-in msg"
                       style={{
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: m.role === 'user' ? 'flex-end' : 'flex-start'
                       }}
                     >
-                      {m.role === 'user' ? (
+                      {m.role === 'user' && editingId === m.id ? (
+                        <div style={{ width: '82%', display: 'grid', gap: 8 }}>
+                          <textarea
+                            autoFocus
+                            value={editDraft}
+                            onChange={(e) => setEditDraft(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                submitEdit(m.id);
+                              }
+                              if (e.key === 'Escape') setEditingId(null);
+                            }}
+                            rows={Math.min(8, Math.max(2, editDraft.split(String.fromCharCode(10)).length))}
+                            style={{ width: '100%', boxSizing: 'border-box', background: '#15151b', border: '1px solid #ff2a43', borderRadius: 16, color: '#fff', fontSize: 14, lineHeight: 1.6, padding: '12px 14px', outline: 'none', fontFamily: 'inherit', resize: 'vertical' }}
+                          />
+                          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                            <button className="btn-outline" style={{ padding: '6px 14px', fontSize: 12.5 }} onClick={() => setEditingId(null)}>Cancel</button>
+                            <button className="btn-red" disabled={!editDraft.trim()} style={{ padding: '6px 14px', fontSize: 12.5 }} onClick={() => submitEdit(m.id)}>Save and resend</button>
+                          </div>
+                        </div>
+                      ) : m.role === 'user' ? (
                         <div
                           style={{
                             maxWidth: '82%',
-                            background: 'rgba(255,255,255,0.08)',
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            borderRadius: 18,
+                            background: '#ff2a43',
+                            border: '1px solid #ff2a43',
+                            color: '#fff',
+                            borderRadius: '18px 18px 4px 18px',
                             padding: '12px 16px',
                             fontSize: 14,
                             lineHeight: 1.6,
@@ -565,7 +649,7 @@ export function WorkspaceApp({
                       ) : (
                         <div style={{ width: '100%', display: 'grid', gap: 10 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#8e8e9c' }}>
-                            <AbliLogo size={18} />
+                            <ModelShape name={m.modelName || ''} size={12} />
                             <span style={{ fontWeight: 600, color: '#e4e4ec' }}>{m.modelName || 'Abli Code'}</span>
                           </div>
 
@@ -595,17 +679,37 @@ export function WorkspaceApp({
 
                           <div
                             style={{
-                              background: 'rgba(255,255,255,0.025)',
-                              border: '1px solid rgba(255,255,255,0.07)',
+                              background: '#0d0d12',
+                              border: '1px solid rgba(255,255,255,0.09)',
+                              borderLeft: '3px solid #ff2a43',
                               borderRadius: 18,
                               padding: '14px 18px',
                               fontSize: 14,
-                              lineHeight: 1.68,
-                              whiteSpace: 'pre-wrap'
+                              lineHeight: 1.68
                             }}
                           >
-                            {m.content}
+                            <Markdown text={m.content} />
                           </div>
+                        </div>
+                      )}
+                      {editingId !== m.id && (
+                        <div className="msg-actions" style={{ display: 'flex', alignItems: 'center', gap: 2, marginTop: 4 }}>
+                          <button className="sb-icon-btn" title="Copy" onClick={() => copyText(m.content, m.id)}>
+                            {copiedId === m.id ? <Check size={13} color="#ff2a43" /> : <Copy size={13} />}
+                          </button>
+                          {m.role === 'user' ? (
+                            <button className="sb-icon-btn" title="Edit and resend" disabled={sending} onClick={() => { setEditingId(m.id); setEditDraft(m.content); }}>
+                              <Pencil size={13} />
+                            </button>
+                          ) : (
+                            <button className="sb-icon-btn" title="Regenerate" disabled={sending} onClick={() => regenerateFrom(m.id)}>
+                              <RefreshCw size={13} />
+                            </button>
+                          )}
+                          <button className="sb-icon-btn" title="Delete message" onClick={() => deleteMessage(m.id)}>
+                            <Trash2 size={13} />
+                          </button>
+                          <span style={{ fontSize: 11, color: '#5f5f6b', marginLeft: 8 }}>{timeLabel(m.createdAt)}</span>
                         </div>
                       )}
                     </div>
@@ -708,6 +812,7 @@ export function WorkspaceApp({
                           >
                             <div>
                               <div style={{ fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <ModelShape name={m.name} size={10} />
                                 {m.name}
                                 {selected && <Check size={13} color="#ff2a43" />}
                               </div>
@@ -897,7 +1002,7 @@ export function WorkspaceApp({
                       className="glass-pill"
                       style={{ padding: '6px 12px', fontSize: 12.5, color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
                     >
-                      <Cpu size={13} color="#ff2a43" />
+                      <ModelShape name={activeModel?.name || ''} size={12} />
                       <span>{activeModel?.name}</span>
                       <ChevronDown size={13} color="#8e8e9c" />
                     </button>
@@ -906,12 +1011,12 @@ export function WorkspaceApp({
 
                   <button
                     className="btn-red"
-                    disabled={sending || !input.trim()}
-                    onClick={() => sendPrompt()}
+                    disabled={!sending && !input.trim() && attachments.length === 0}
+                    onClick={() => (sending ? abortRef.current?.abort() : sendPrompt())}
                     style={{ width: 34, height: 34, borderRadius: 999, display: 'grid', placeItems: 'center', padding: 0 }}
-                    title="Send"
+                    title={sending ? 'Stop' : 'Send'}
                   >
-                    <ArrowUp size={16} />
+                    {sending ? <Square size={12} fill="currentColor" /> : <ArrowUp size={16} />}
                   </button>
                 </div>
               </div>

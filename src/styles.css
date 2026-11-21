@@ -272,3 +272,15 @@ main{animation:overlayIn .4s ease both}
 body.is-desktop #desktop-drag{display:block;position:fixed;top:0;left:env(titlebar-area-x,0px);width:env(titlebar-area-width,calc(100% - 140px));height:36px;-webkit-app-region:drag;z-index:1000}
 body.is-desktop #root{padding-top:36px;box-sizing:border-box}
 body.is-desktop #root>div[style*="height: 100vh"]{height:calc(100vh - 36px)!important}
+
+/* readable, copyable messages and message actions */
+::selection{background:rgba(255,42,67,.45);color:#fff}
+.msg,.msg *{user-select:text;-webkit-user-select:text}
+.msg .msg-actions button{user-select:none;-webkit-user-select:none}
+.msg-actions{opacity:0;transition:opacity .15s ease}
+.msg:hover .msg-actions,.msg:focus-within .msg-actions{opacity:1}
+.sb-icon-btn:disabled{opacity:.35;cursor:default}
+/* geometric background art, same language as the landing page */
+main{position:relative;isolation:isolate}
+main::before{content:"";position:absolute;right:-90px;bottom:-110px;width:440px;height:440px;z-index:-1;pointer-events:none;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 420 420'%3E%3Ccircle cx='300' cy='300' r='130' fill='none' stroke='%23ff2a43' stroke-opacity='.4' stroke-width='2'/%3E%3Crect x='110' y='150' width='150' height='150' rx='20' fill='%23101016' stroke='%2325252f' stroke-width='2' transform='rotate(14 185 225)'/%3E%3Cpolygon points='330,50 405,185 255,185' fill='%2313131a' stroke='%232a2a35' stroke-width='2'/%3E%3Ccircle cx='86' cy='340' r='24' fill='%23ff2a43' fill-opacity='.9'/%3E%3C/svg%3E") no-repeat center/contain}
+main::after{content:"";position:absolute;left:-60px;top:60px;width:230px;height:230px;z-index:-1;pointer-events:none;opacity:.85;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 220 220'%3E%3Ccircle cx='90' cy='90' r='70' fill='none' stroke='%2322222c' stroke-width='2'/%3E%3Ccircle cx='90' cy='90' r='34' fill='%23101016'/%3E%3Crect x='150' y='140' width='34' height='34' rx='5' fill='%23ff2a43' fill-opacity='.8' transform='rotate(18 167 157)'/%3E%3C/svg%3E") no-repeat center/contain}
