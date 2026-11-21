@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-label="Abli Code">
+  <rect width="1200" height="360" rx="28" fill="#060608"/>
+  <circle cx="930" cy="190" r="120" fill="#ff2547"/>
+  <rect x="800" y="70" width="120" height="120" rx="26" fill="#fafafa"/>
+  <path d="M830 160 L860 100 L890 160" fill="none" stroke="#060608" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="1060" cy="90" r="36" fill="none" stroke="#fafafa" stroke-width="10"/>
+  <path d="M1000 300 L1070 180 L1140 300 Z" fill="#060608" stroke="#fafafa" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M770 300 A70 70 0 0 1 840 230 L840 300 Z" fill="#fafafa"/>
+  <rect x="880" y="296" width="70" height="22" rx="11" fill="#fafafa"/>
+  <text x="70" y="150" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="84" font-weight="800" fill="#fafafa">Abli Code</text>
+  <text x="70" y="222" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="40" font-weight="700" fill="#ff2547">Built for abliterated models.</text>
+  <text x="70" y="272" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="26" fill="#9a9aa5">One desktop and web workspace for open-weight chat models.</text>
+</svg>

@@ -1,76 +1,92 @@
 {
-    "name":  "abli-code",
-    "version":  "1.0.0",
-    "description":  "Abli Code - Open-source AI coding desktop app, web workspace, Stripe \u0026 Supabase gateway, and MCP hub.",
-    "type":  "module",
-    "main":  "desktop/main.mjs",
-    "license":  "MIT",
-    "author":  "Umar Al-Fateh Suhaimi \u003cumaralfatehsuhaimi02@gmail.com\u003e",
-    "repository":  {
-                       "type":  "git",
-                       "url":  "https://github.com/umaralfatehsuhaimi02-rgb/abli-code"
-                   },
-    "scripts":  {
-                    "dev:web":  "vite",
-                    "build":  "node scripts/build.mjs",
-                    "start":  "node server.mjs",
-                    "launch":  "npm run build \u0026\u0026 node server.mjs",
-                    "desktop":  "electron .",
-                    "desktop:build":  "npm run build \u0026\u0026 electron .",
-                    "dist":  "npm run build \u0026\u0026 electron-builder",
-                    "test":  "node scripts/test.mjs"
-                },
-    "dependencies":  {
-                         "@supabase/supabase-js":  "^2.49.1",
-                         "lucide-react":  "^0.475.0",
-                         "react":  "^19.0.0",
-                         "react-dom":  "^19.0.0",
-                         "stripe":  "^23.2.0"
-                     },
-    "devDependencies":  {
-                            "@types/react":  "^19.0.0",
-                            "@types/react-dom":  "^19.0.0",
-                            "@vitejs/plugin-react":  "^4.3.4",
-                            "electron":  "45.2.2",
-                            "electron-builder":  "26.18.1",
-                            "typescript":  "^5.6.0",
-                            "vite":  "^6.0.0"
-                        },
-    "build":  {
-                  "appId":  "com.ablicode.desktop",
-                  "productName":  "Abli Code",
-                  "files":  [
-                                "desktop/**/*",
-                                "dist/**/*",
-                                "lib/**/*",
-                                "mcp/**/*",
-                                "public/**/*",
-                                "server.mjs",
-                                "package.json",
-                                "LICENSE"
-                            ],
-                  "directories":  {
-                                      "output":  "release"
-                                  },
-                  "win":  {
-                              "target":  "nsis",
-                              "icon":  "public/icon.ico"
-                          },
-                  "mac":  {
-                              "target":  "dmg",
-                              "icon":  "public/icon.png"
-                          },
-                  "linux":  {
-                                "icon":  "public/icon.png",
-                                "category":  "Development",
-                                "target":  "AppImage"
-                            },
-                  "nsis":  {
-                               "artifactName":  "Abli-Code-Setup-${version}.exe",
-                               "oneClick":  false,
-                               "allowToChangeInstallationDirectory":  true,
-                               "installerIcon":  "public/icon.ico",
-                               "uninstallerIcon":  "public/icon.ico"
-                           }
-              }
+  "name": "abli-code",
+  "version": "1.0.0",
+  "description": "Abli Code - Open-source AI coding desktop app, web workspace, Stripe & Supabase gateway, and MCP hub.",
+  "type": "module",
+  "main": "desktop/main.mjs",
+  "license": "MIT",
+  "author": "Umar Al-Fateh Suhaimi <umaralfatehsuhaimi02@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/umaralfatehsuhaimi02-rgb/abli-code"
+  },
+  "scripts": {
+    "dev:web": "vite",
+    "build": "node scripts/build.mjs",
+    "start": "node server.mjs",
+    "launch": "npm run build && node server.mjs",
+    "desktop": "electron .",
+    "desktop:build": "npm run build && electron .",
+    "dist": "npm run build && electron-builder",
+    "test": "node scripts/test.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.1",
+    "lucide-react": "^0.475.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "stripe": "^23.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "45.2.2",
+    "electron-builder": "26.18.1",
+    "typescript": "^5.6.0",
+    "vite": "^6.0.0"
+  },
+  "build": {
+    "appId": "com.ablicode.desktop",
+    "productName": "Abli Code",
+    "files": [
+      "desktop/**/*",
+      "dist/**/*",
+      "lib/**/*",
+      "mcp/**/*",
+      "public/**/*",
+      "server.mjs",
+      "package.json",
+      "LICENSE"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "icon": "public/icon.ico",
+      "artifactName": "Abli-Code-${version}-win-${arch}.${ext}"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "public/icon.png"
+    },
+    "linux": {
+      "icon": "public/icon.png",
+      "category": "Development",
+      "target": "AppImage"
+    },
+    "nsis": {
+      "artifactName": "Abli-Code-Setup-${version}-${arch}.exe",
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "public/icon.ico",
+      "uninstallerIcon": "public/icon.ico"
+    }
+  }
 }
