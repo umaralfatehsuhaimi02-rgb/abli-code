@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { CheckCircle2, Github, Mail, Shield, X } from 'lucide-react';
+import { GoogleLogo } from './GoogleLogo';
 import { api, setToken, UserProfile } from '../lib/api';
 import { AbliLogo } from './AbliLogo';
 
@@ -95,7 +96,7 @@ export function AuthModal({ open, onClose, onAuthed }: { open: boolean; onClose:
             <Github size={15} /> GitHub
           </button>
           <button className="btn-outline" style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 13, borderRadius: 12 }} onClick={() => handleOAuth('google')}>
-            <Shield size={15} color="#ff2a43" /> Google
+            <GoogleLogo size={16} /> Google
           </button>
         </div>
 
@@ -143,3 +144,4 @@ export function AuthModal({ open, onClose, onAuthed }: { open: boolean; onClose:
     </div>
   );
 }
+

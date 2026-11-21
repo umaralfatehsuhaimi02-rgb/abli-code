@@ -64,6 +64,13 @@
                                 "icon":  "public/icon.png",
                                 "category":  "Development",
                                 "target":  "AppImage"
-                            }
+                            },
+                  "nsis":  {
+                               "artifactName":  "Abli-Code-Setup-${version}.exe",
+                               "oneClick":  false,
+                               "allowToChangeInstallationDirectory":  true,
+                               "installerIcon":  "public/icon.ico",
+                               "uninstallerIcon":  "public/icon.ico"
+                           }
               }
 }
