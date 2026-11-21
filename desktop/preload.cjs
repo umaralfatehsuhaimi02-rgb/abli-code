@@ -11,6 +11,15 @@ contextBridge.exposeInMainWorld('abliDesktop', {
   runComputerTool: (toolName, args) => ipcRenderer.invoke('computer:invoke', { toolName, args }),
   runReaTool: (toolName, args) => ipcRenderer.invoke('rea:invoke', { toolName, args }),
   openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
+  update: {
+    state: () => ipcRenderer.invoke('update:state'),
+    install: () => ipcRenderer.invoke('update:install'),
+    onState: (cb) => {
+      const fn = (_e, s) => cb(s);
+      ipcRenderer.on('update:state', fn);
+      return () => ipcRenderer.removeListener('update:state', fn);
+    }
+  },
   local: {
     check: () => ipcRenderer.invoke('local:check'),
     status: () => ipcRenderer.invoke('local:status'),

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { UpdateButton } from './UpdateButton';
 import {
   Archive, ArchiveRestore, BookOpen, ChevronDown, Cpu, ChevronRight, Copy, CreditCard, Download, Folder, FolderPlus, LogOut,
   MoreHorizontal, PanelLeft, Pencil, Pin, PinOff, Plug, Plus, Search, Trash2, X
@@ -282,6 +283,7 @@ export function Sidebar(p: SidebarProps) {
         </button>
       </div>
 
+      <UpdateButton />
       <div style={{ padding: '4px 10px 4px', display: 'grid', gap: 2 }}>
         <NavRow icon={<Plus size={15} />} label="New thread" hint="Ctrl N" onClick={() => p.onNew()} />
         <NavRow icon={<BookOpen size={15} />} label="Prompts" onClick={() => setPromptsOpen(true)} />

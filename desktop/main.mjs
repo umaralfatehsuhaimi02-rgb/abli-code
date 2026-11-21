@@ -177,9 +177,12 @@ function cmpVer(a, b) {
   return 0;
 }
 
-// On launch, look at the latest GitHub release. If it is newer, fetch the setup for this PC in the background and offer to install it.
+// Update state, shown in the app as an "Update to vX" button. The download starts only when the user clicks it.
+let upd = { phase: 'idle', version: '', error: '' };
+let updAsset = null;
+function setUpd(p) { upd = { ...upd, ...p }; try { mainWindow?.webContents.send('update:state', upd); } catch {} }
 async function checkForUpdate() {
-  if (!app.isPackaged) return;
+  if (!app.isPackaged || upd.phase === 'downloading' || upd.phase === 'installing') return;
   const r = await fetch('https://api.github.com/repos/umaralfatehsuhaimi02-rgb/abli-code/releases/latest', { headers: { 'User-Agent': 'abli-code', Accept: 'application/vnd.github+json' } });
   if (!r.ok) return;
   const rel = await r.json();
@@ -188,18 +191,30 @@ async function checkForUpdate() {
   const arch = process.arch === 'arm64' ? 'arm64' : process.arch === 'ia32' ? 'ia32' : 'x64';
   const asset = (rel.assets || []).find((a) => a.name === 'Abli-Code-Setup-' + latest + '-' + arch + '.exe');
   if (!asset) return;
-  const file = path.join(app.getPath('temp'), asset.name);
-  const d = await fetch(asset.browser_download_url);
-  if (!d.ok) return;
-  fs.writeFileSync(file, Buffer.from(await d.arrayBuffer()));
-  const res = await dialog.showMessageBox(mainWindow, { type: 'info', buttons: ['Restart and update', 'Later'], defaultId: 0, cancelId: 1, title: 'Abli Code update', message: 'Abli Code ' + latest + ' is ready', detail: 'Restart now to install it. Your chats stay as they are.' });
-  if (res.response !== 0) return;
-  spawnUpd('cmd.exe', ['/c', 'timeout /t 3 >nul & "' + file + '" /S --force-run'], { detached: true, stdio: 'ignore', windowsHide: true, windowsVerbatimArguments: true }).unref();
-  app.quit();
+  updAsset = asset;
+  setUpd({ phase: 'available', version: latest, error: '' });
+}
+async function installUpdate() {
+  if (!updAsset || upd.phase === 'downloading' || upd.phase === 'installing') return { ok: false };
+  setUpd({ phase: 'downloading', error: '' });
+  try {
+    const file = path.join(app.getPath('temp'), updAsset.name);
+    const d = await fetch(updAsset.browser_download_url);
+    if (!d.ok) throw new Error('Download failed (' + d.status + ')');
+    fs.writeFileSync(file, Buffer.from(await d.arrayBuffer()));
+    setUpd({ phase: 'installing' });
+    spawnUpd('cmd.exe', ['/c', 'timeout /t 3 >nul & "' + file + '" /S --force-run'], { detached: true, stdio: 'ignore', windowsHide: true, windowsVerbatimArguments: true }).unref();
+    setTimeout(() => app.quit(), 600);
+    return { ok: true };
+  } catch (e) {
+    setUpd({ phase: 'available', error: String((e && e.message) || e) });
+    return { ok: false };
+  }
 }
 
 app.whenReady().then(async () => {
   setTimeout(() => { checkForUpdate().catch(() => {}); }, 20000);
+  setInterval(() => { checkForUpdate().catch(() => {}); }, 30 * 60 * 1000);
   if (!BACKEND_URL) await startEmbeddedServer();
 
   handle('window:minimize', () => mainWindow?.minimize());
@@ -209,6 +224,8 @@ app.whenReady().then(async () => {
     else mainWindow.maximize();
   });
   handle('window:close', () => mainWindow?.close());
+  handle('update:state', () => upd);
+  handle('update:install', () => installUpdate());
 
   handle('dialog:pickFolder', async () => {
     const res = await dialog.showOpenDialog(mainWindow, { properties: ['openDirectory'] });
