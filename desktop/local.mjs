@@ -316,7 +316,30 @@ async function start(id) {
     if (S.child !== child) throw new Error(S.error || `${m.name} could not start.`);
     try {
       const res = await fetch(`http://127.0.0.1:${port}/health`);
-      if (res.ok) { S.running.ready = true; return { ok: true }; }
+      if (res.ok) {
+        if (m.files.some((f) => f.adapter)) {
+          // These models are only abliterated through the adapter. Make sure it is loaded and fully on, or refuse to run.
+          const auth = { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+          const adapterOn = async () => {
+            const lr = await fetch(`http://127.0.0.1:${port}/lora-adapters`, { headers: auth });
+            if (!lr.ok) return false;
+            const list = await lr.json();
+            return Array.isArray(list) && list.length > 0 && list.every((x) => Number(x.scale) > 0.99);
+          };
+          let on = false;
+          try { on = await adapterOn(); } catch {}
+          if (!on) {
+            try { await fetch(`http://127.0.0.1:${port}/lora-adapters`, { method: 'POST', headers: auth, body: JSON.stringify([{ id: 0, scale: 1.0 }]) }); on = await adapterOn(); } catch {}
+          }
+          if (!on) {
+            killChild();
+            S.error = `${m.name} was not started: its abliteration adapter did not load, so it would not be uncensored. Remove and reinstall it from Abli Mini.`;
+            throw new Error(S.error);
+          }
+        }
+        S.running.ready = true;
+        return { ok: true };
+      }
     } catch {}
     await new Promise((x) => setTimeout(x, 600));
   }
